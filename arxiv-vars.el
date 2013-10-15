@@ -9,8 +9,8 @@
   "Faces for the arxiv mode"
   :group 'arxiv)
 
-(defgroup arxiv-parameters nil
-  "General parameters for the arxiv mode"
+(defgroup arxiv-preferences nil
+  "General preferences for the arxiv mode"
   :group 'arxiv)
 
 (defvar arxiv-keyword-list-default nil
@@ -34,8 +34,13 @@
 
 (defcustom arxiv-entries-per-page 100
   "Number of entries per page in the article list."
-  :group 'arxiv-parameters
+  :group 'arxiv-preferences
   :type 'integer)
+
+(defcustom arxiv-default-browser "firefox"
+  "Default browser for opening the arXiv url."
+  :group 'arxiv-preferences
+  :type 'string)
 
 ;; Defining custom faces
 (defvar arxiv-title-face 'arxiv-title-face)

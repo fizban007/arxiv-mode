@@ -32,10 +32,10 @@
 ;; Query the arXiv for the articles between date and date+1
 (defun arxiv-query-latest (cat &optional date start max-num)
   (catch 'myTag
-    ;; (setq date-start date)
-    ;; (setq date-end (number-to-string (+ (string-to-int date) 1)))
-    (setq date-end date)
-    (setq date-start (number-to-string (+ (string-to-int date) -1)))
+    (setq date-start date)
+    (setq date-end (number-to-string (+ (string-to-int date) 1)))
+    ;; (setq date-end date)
+    ;; (setq date-start (number-to-string (+ (string-to-int date) -1)))
     (setq my-list nil)
     (setq my-buffer (url-retrieve-synchronously (arxiv-search-date date-start date-end cat)))
     ;; (message "%s" my-buffer)

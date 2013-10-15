@@ -75,7 +75,12 @@
   (interactive)
   ;; (message "%S" (nth arxiv-current-entry arxiv-entry-list))
   (setq url (cdr (assoc 'url (nth arxiv-current-entry arxiv-entry-list))))
-  (start-process "arxiv-webpage" nil "firefox" url))
+  (start-process "arxiv-webpage" nil arxiv-default-browser url))
+
+(defun arxiv-customize ()
+  "Customize the arxiv-mode"
+  (interactive)
+  (customize-group 'arxiv))
 
 (defun arxiv-show-abstract (&optional arg)
   "Show the abstract for the current highlighted entry."
@@ -204,10 +209,10 @@
 
 (defun arxiv-read (date category)
   "Read the articles submitted the day before a given date, in a
-given category. Defaults to today."
-  (interactive (list (read-string "Enter desired date (default today): ") (read-string "Enter desired category (default astro-ph): ")))
+given category. Defaults to yesterday."
+  (interactive (list (read-string "Enter desired date (default yesterday): ") (read-string "Enter desired category (default astro-ph): ")))
   (if (equal date "")
-    (setq date (format-time-string "%Y%m%d")))
+    (setq date (number-to-string (- (string-to-int (format-time-string "%Y%m%d")) 1))))
   (if (equal category "")
     (setq category "astro-ph"))
   ;; (message "%S %S" date category)
