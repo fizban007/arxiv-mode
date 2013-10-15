@@ -53,7 +53,7 @@
     (arxiv-show-abstract)))
 
 (defun arxiv-prev-entry (&optional arg)
-  "Move to the next arXiv entry"
+  "Move to the previous arXiv entry"
   (interactive "P")
   (unless arg
     (setq arg 1))
@@ -71,12 +71,14 @@
     (arxiv-show-abstract)))
 
 (defun arxiv-open-current-url ()
+  "Open the webpage for the current highlighted paper entry."
   (interactive)
   ;; (message "%S" (nth arxiv-current-entry arxiv-entry-list))
   (setq url (cdr (assoc 'url (nth arxiv-current-entry arxiv-entry-list))))
   (start-process "arxiv-webpage" nil "firefox" url))
 
 (defun arxiv-show-abstract (&optional arg)
+  "Show the abstract for the current highlighted entry."
   (interactive)
   (unless arxiv-abstract-window
     (setq abstract-window (split-window-right)))
@@ -106,6 +108,9 @@
   (setq arxiv-abstract-window (get-buffer-window abstract-buffer)))
 
 (defun arxiv-show-hide-abstract (&optional arg)
+  "Toggle the visibility of the abstract. If the abstract window
+  does not exist, then create it and display appropriate content,
+  otherwise kill it."
   (interactive)
   (if arxiv-abstract-window
       (with-selected-window arxiv-abstract-window
@@ -114,6 +119,7 @@
     (arxiv-show-abstract)))
  
 (defun arxiv-exit (&optional arg)
+  "Exit from the arXiv mode, deleting all relevant buffers."
   (interactive)
   (kill-buffer "*arXiv-update*")
   (if (get-buffer "*arXiv-abstract*")
@@ -158,6 +164,8 @@
   ;;   (evil-emacs-state)))
 
 (defun arxiv-populate-page (page num-per-page date category &optional arxiv-buffer arg)
+  "Populate the page of results according to provided search conditions."
+  ;; TODO: Need to figure out page separation mechanism
   (interactive)
   (catch 'myTag 
     (setq arxiv-entry-list (arxiv-query-latest category date))
@@ -195,6 +203,8 @@
     
 
 (defun arxiv-read (date category)
+  "Read the articles submitted the day before a given date, in a
+given category. Defaults to today."
   (interactive (list (read-string "Enter desired date (default today): ") (read-string "Enter desired category (default astro-ph): ")))
   (if (equal date "")
     (setq date (format-time-string "%Y%m%d")))

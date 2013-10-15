@@ -46,7 +46,7 @@
     (goto-char (- my-point 5))
     (setq root (libxml-parse-xml-region (point) (point-max)))
     (setq arxiv-query-total-results (string-to-int (nth 2 (car (xml-get-children root 'totalResults)))))
-    (message "%S" arxiv-total-results)
+    (message "%S" arxiv-query-total-results)
     (setq entries (xml-get-children root 'entry))
     (unless entries
       (throw 'myTag nil))

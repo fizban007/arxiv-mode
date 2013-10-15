@@ -56,13 +56,30 @@
   "Face name for abstract in the arXiv abstract viewing window."
   :group 'arxiv-fontification)
 
+(defvar arxiv-abstract-math-face 'arxiv-abstract-math-face)
+(defface arxiv-abstract-math-face
+  '((t (:inherit font-lock-reference-face :height 1.2 :family "Monospace")))
+  "Face name for the latex content in abstract in the arXiv
+abstract viewing window."
+  :group 'arxiv-fontification)
+
 (defvar arxiv-keyword-list-abstract nil
   "A list of highlighting keywords for arXiv abstract viewing mode")
 
 (defvar arxiv-abstract-mode-hook nil
   "A list of functions to call when entering arxiv-abstract-mode.")
 
-(defvar arxiv-abstract-syntax-table (make-syntax-table text-mode-syntax-table))
+(defvar arxiv-abstract-syntax-table nil)
+(setq arxiv-abstract-syntax-table
+      (let ((synTable (make-syntax-table text-mode-syntax-table)))
+
+        ;; bash style comment: “# …” 
+        ;; (modify-syntax-entry ?# "< b" synTable)
+        ;; (modify-syntax-entry ?\n "> b" synTable)
+        (modify-syntax-entry ?$ "($" synTable)
+        (modify-syntax-entry ?$ ")$" synTable)
+
+        synTable))
 
 (provide 'arxiv-vars)
 
