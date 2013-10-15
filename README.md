@@ -20,7 +20,7 @@ and category you would like to read.
 In the article list, use `n` and `p` to navigate the article list. One
 can use `C-u` to prefix the navigation commands for more movement
 steps. Press `a` to toggle visibility of the abstract window. Press
-`u` to open the entry in a web browser.
+`u` to open the entry in a web browser. Press `q` to exit the mode.
 
 Installation
 ============
