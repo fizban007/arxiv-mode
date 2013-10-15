@@ -27,7 +27,9 @@ Installation
 
 Just put the directory in your filesystem and at it to your `load-path`. Put the following into your `.emacs` file
 
-    (require 'arxiv-mode)
+````lisp
+(require 'arxiv-mode)
+````
 
 Customization
 =============
