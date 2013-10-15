@@ -34,4 +34,5 @@ Customization
 
 `arxiv-mode` can be customized through emacs native customization
 interface. Currently only a few variables can be modified but others
-will be added as code develops. These can be found under the group `arxiv`, or just run `arxiv-customize'.
+will be added as code develops. These can be found under the group
+`arxiv`, or just run `arxiv-customize`.
