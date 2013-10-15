@@ -32,7 +32,7 @@
 (defvar arxiv-current-entry nil
   "Current entry in the arXiv article list.")
 
-(defcustom arxiv-entries-per-page 50
+(defcustom arxiv-entries-per-page 100
   "Number of entries per page in the article list."
   :group 'arxiv-parameters
   :type 'integer)

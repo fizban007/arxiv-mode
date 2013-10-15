@@ -4,6 +4,7 @@
 
 ; URL of the arXiv api
 (setq arxiv-url "http://export.arxiv.org/api/query")
+(setq arxiv-query-total-results nil)
 ;; (setq arxiv-search-parameter "?search_query=submittedDate:[20130910+TO+20130920]+AND+cat:astro-ph*&sortBy=submittedDate&sortOrder=descending&start=0&max_results=30")
 ;; (message "%s" arxiv-url)
 
@@ -44,6 +45,8 @@
     (setq my-point (search-forward "<?xml"))
     (goto-char (- my-point 5))
     (setq root (libxml-parse-xml-region (point) (point-max)))
+    (setq arxiv-query-total-results (string-to-int (nth 2 (car (xml-get-children root 'totalResults)))))
+    (message "%S" arxiv-total-results)
     (setq entries (xml-get-children root 'entry))
     (unless entries
       (throw 'myTag nil))

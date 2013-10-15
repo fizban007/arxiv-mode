@@ -36,25 +36,37 @@
 (defun arxiv-next-entry (&optional arg)
   "Move to the next arXiv entry"
   (interactive "P")
-  (when (< arxiv-current-entry (+ (safe-length arxiv-entry-list) -1))
-    (setq arxiv-current-entry (+ arxiv-current-entry 1)))
-  (arxiv-remove-highlight 0)
-  (or (eobp) (forward-char 1))
-  (re-search-forward "^Title:" nil t arg)
-  (beginning-of-line 1)
-  (arxiv-highlight-entry 0 (point))
+  (unless arg
+    (setq arg 1))
+  (while (and (> arg 0)
+              (< arxiv-current-entry (+ (safe-length arxiv-entry-list) -1)))
+    (progn
+      ;; (setq arxiv-current-entry (+ arxiv-current-entry 1))
+      (setq arg (+ arg -1))
+      (arxiv-remove-highlight 0)
+      (or (eobp) (forward-char 1))
+      (re-search-forward "^Title:" nil t nil)
+      (beginning-of-line 1)
+      (arxiv-highlight-entry 0 (point))))
+      (setq arxiv-current-entry (/ (line-number-at-pos (point)) 4))
   (when arxiv-abstract-window
     (arxiv-show-abstract)))
 
 (defun arxiv-prev-entry (&optional arg)
   "Move to the next arXiv entry"
   (interactive "P")
-  (when (> arxiv-current-entry 0)
-    (setq arxiv-current-entry (+ arxiv-current-entry -1)))
-  (arxiv-remove-highlight 0)
-  (re-search-backward "^Title:" nil t arg)
-  (beginning-of-line 1)
-  (arxiv-highlight-entry 0 (point))
+  (unless arg
+    (setq arg 1))
+  (while (and (> arg 0)
+              (> arxiv-current-entry 0))
+    (progn
+      ;; (setq arxiv-current-entry (+ arxiv-current-entry -1))
+      (setq arg (+ arg -1))
+      (arxiv-remove-highlight 0)
+      (re-search-backward "^Title:" nil t nil)
+      (beginning-of-line 1)
+      (arxiv-highlight-entry 0 (point))))
+      (setq arxiv-current-entry (/ (line-number-at-pos (point)) 4))
   (when arxiv-abstract-window
     (arxiv-show-abstract)))
 
@@ -174,7 +186,8 @@
       (arxiv-highlight-entry 0 (point))
       (setq arxiv-current-entry 0)
       (arxiv-mode)
-      (message "Total number of entries: %d" (safe-length arxiv-entry-list))
+      ;; (message "Total number of entries: %d" (safe-length arxiv-entry-list))
+      (message "Total number of entries: %d" arxiv-query-total-results)
       (setq buffer-read-only t))
     (switch-to-buffer arxiv-buffer)
     arxiv-buffer))
@@ -182,7 +195,7 @@
     
 
 (defun arxiv-read (date category)
-  (interactive "sEnter desired date (default today): \nsEnter desired category (default astro-ph): ")
+  (interactive (list (read-string "Enter desired date (default today): ") (read-string "Enter desired category (default astro-ph): ")))
   (if (equal date "")
     (setq date (format-time-string "%Y%m%d")))
   (if (equal category "")
