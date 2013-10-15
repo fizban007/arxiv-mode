@@ -1,4 +1,12 @@
 ;; Defines the arxiv-mode
+;; 
+;; Author: Alex Chen (fizban007)
+;; Email: fizban007 (at) gmail (dot) com
+;;
+;; This software is distributed under GPL license
+;;
+;;
+
 (require 'overlay)
 (require 'button)
 (require 'arxiv-vars)
