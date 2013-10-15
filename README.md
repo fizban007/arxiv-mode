@@ -25,7 +25,8 @@ steps. Press `a` to toggle visibility of the abstract window. Press
 Installation
 ============
 
-Just put the directory in your filesystem and at it to your `load-path`. Put the following into your `.emacs` file
+Just put the directory in your filesystem and at it to your
+`load-path`. Put the following into your `.emacs` file
 
 ````lisp
 (require 'arxiv-mode)
@@ -38,3 +39,19 @@ Customization
 interface. Currently only a few variables can be modified but others
 will be added as code develops. These can be found under the group
 `arxiv`, or just run `arxiv-customize`.
+
+TODO
+====
+
+Currently I'm working on better paging support and
+navigation. Following are the functionality that I have in mind for
+some point in the future:
+
+* Ability to download pdf to a temporary location and open it in an
+  external viewer.
+
+* Integration with Zotero so that one can put an article into
+  collection directly.
+
+* Implement a search interface to do complex arXiv searches in Emacs
+  directly.
