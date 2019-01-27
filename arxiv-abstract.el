@@ -11,8 +11,8 @@
 
 (setq arxiv-keyword-list-abstract
       '(("Title:\\(.*?\\)$" . (1 arxiv-title-face))
-        ("\\$[^$]+\\$" . arxiv-abstract-math-face)
         ("Abstract:\\([[:ascii:]]+\\)" . (1 arxiv-abstract-face))
+	("\\$[^$]+\\$" 0 arxiv-abstract-math-face t)
         ("Title\\|Authors\\|Date\\|Submitted\\|Abstract" . arxiv-keyword-face)))
 
 ;; (defun arxiv-abstract-mode ()

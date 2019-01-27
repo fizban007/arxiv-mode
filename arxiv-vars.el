@@ -45,7 +45,7 @@
 ;; Defining custom faces
 (defvar arxiv-title-face 'arxiv-title-face)
 (defface arxiv-title-face 
-  '((t (:inherit font-lock-keyword-face :height 1.4 :family "Lucida Grande")))
+  '((t (:inherit font-lock-keyword-face :height 1.2 :family "Lucida Grande")))
   "Face name for article titles in the arXiv article list."
   :group 'arxiv-fontification)
 
@@ -57,13 +57,13 @@
 
 (defvar arxiv-abstract-face 'arxiv-abstract-face)
 (defface arxiv-abstract-face
-  '((t (:inherit font-lock-string-face :height 1.2 :family "Lucida Grande")))
+  '((t (:inherit font-lock-string-face)))
   "Face name for abstract in the arXiv abstract viewing window."
   :group 'arxiv-fontification)
 
 (defvar arxiv-abstract-math-face 'arxiv-abstract-math-face)
 (defface arxiv-abstract-math-face
-  '((t (:inherit font-lock-reference-face :height 1.2 :family "Monospace")))
+  '((t (:inherit font-lock-reference-face :height 1.0 :family "Monospace")))
   "Face name for the latex content in abstract in the arXiv
 abstract viewing window."
   :group 'arxiv-fontification)
