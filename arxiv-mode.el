@@ -3,6 +3,9 @@
 ;; Author: Alex Chen (fizban007)
 ;; Email: fizban007 (at) gmail (dot) com
 ;;
+;; Modified by Simon Lin (iserlohn)
+;; Email: n.sibetz@gmail.com
+;;
 ;; This software is distributed under GPL license
 ;;
 ;;
@@ -83,7 +86,9 @@
   (interactive)
   ;; (message "%S" (nth arxiv-current-entry arxiv-entry-list))
   (setq url (cdr (assoc 'url (nth arxiv-current-entry arxiv-entry-list))))
-  (start-process "arxiv-webpage" nil arxiv-default-browser url))
+  ;; (start-process "arxiv-webpage" nil arxiv-default-browser url)
+  (browse-url url)
+  )
 
 (defun arxiv-customize ()
   "Customize the arxiv-mode"
@@ -141,11 +146,13 @@
     (delete-window arxiv-abstract-window)
     (setq arxiv-abstract-window nil)))
 
+
+;;======================convinent keymaps for iserlohn========================================
 (setq arxiv-mode-map (make-sparse-keymap))
-(define-key arxiv-mode-map "n" 'arxiv-next-entry)
-(define-key arxiv-mode-map "p" 'arxiv-prev-entry)
-(define-key arxiv-mode-map "u" 'arxiv-open-current-url)
-(define-key arxiv-mode-map "a" 'arxiv-show-hide-abstract)
+(define-key arxiv-mode-map "k" 'arxiv-next-entry)
+(define-key arxiv-mode-map "i" 'arxiv-prev-entry)
+(define-key arxiv-mode-map (kbd "RET") 'arxiv-open-current-url)
+(define-key arxiv-mode-map (kbd "SPC") 'arxiv-show-hide-abstract)
 ;; (define-key arxiv-mode-map "q" '(lambda () (interactive) (kill-buffer "*arXiv-update*")))
 (define-key arxiv-mode-map "q" 'arxiv-exit)
 
@@ -251,11 +258,11 @@
 (defun arxiv-read (date category)
   "Read the articles submitted the day before a given date, in a
 given category. Defaults to yesterday."
-  (interactive (list (read-string "Enter desired date (default yesterday): ") (read-string "Enter desired category (default astro-ph): ")))
+  (interactive (list (read-string "Enter desired date (default yesterday): ") (read-string "Enter desired category (default hep-th): ")))
   (if (equal date "")
     (setq date (number-to-string (- (string-to-int (format-time-string "%Y%m%d")) 1))))
   (if (equal category "")
-    (setq category "astro-ph"))
+    (setq category "hep-th"))
   ;; (message "%S %S" date category)
   (arxiv-populate-page 0 arxiv-entries-per-page date category)
   )

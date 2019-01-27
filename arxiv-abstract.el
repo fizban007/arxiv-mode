@@ -2,7 +2,8 @@
 (require 'arxiv-vars)
 
 (setq arxiv-abstract-mode-map (make-sparse-keymap))
-(define-key arxiv-abstract-mode-map "u" 'arxiv-open-current-url)
+;;======================convinent keymap for iserlohn================================
+(define-key arxiv-abstract-mode-map "RET" 'arxiv-open-current-url)
 (define-key arxiv-abstract-mode-map "q" '(lambda () 
                                            (interactive)
                                            (delete-window)
@@ -31,11 +32,11 @@
 ;;   (set-syntax-table arxiv-abstract-syntax-table)
 ;;   ;; (use-local-map arxiv-abstract-mode-map)
 ;;   (run-hooks 'arxiv-abstract-mode-hook))
-(define-derived-mode arxiv-abstract-mode text-mode
+(define-derived-mode arxiv-abstract-mode text-mode "arXiv"
   "Major mode for reading arXiv abstracts."
   (set (make-local-variable 'font-lock-defaults) '(arxiv-keyword-list-abstract))
   (setq font-lock-multiline t)
-  )
+)
   
 
 (provide 'arxiv-abstract)

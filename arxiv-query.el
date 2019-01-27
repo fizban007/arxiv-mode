@@ -147,8 +147,10 @@
                              (url . ,my-url)
                              (date . ,my-publishdate)
                              (pdf . ,my-pdf)))
-         ;; (add-to-list 'my-list alist-entry)
-         (setq my-list (append my-list alist-entry))
+	 ;; (add-to-list 'my-list alist-entry)
+	 ;; ==========================edited by iserlohn 012519 to ensure correct nesting=============================
+         (setq my-list (append my-list `(,alist-entry)))
+	 ;; ==========================================================================================================
          ;; (message "%S\n" alist-entry)
          ;; )) entries)
          )) entries)
