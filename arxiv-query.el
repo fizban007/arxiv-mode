@@ -25,7 +25,7 @@
   (unless start
     (setq start 0))  ; Start with the first result
   (unless max-num
-    (setq max-num 50))  ; Default to 50 results per page
+    (setq max-num 100))  ; Default to 100 results per page
   (format "%s?search_query=submittedDate:[%s0000+TO+%s0000]+AND+cat:%s*&sortBy=submittedDate&sortOrder=descending&start=%d&max_results=%d" 
           arxiv-url dateStart dateEnd category start max-num))
 
@@ -95,13 +95,11 @@
          )) entries)
     my-list))
 
-;; Query the arXiv for the articles between date and date+1
-(defun arxiv-query-latest (cat &optional date start max-num)
+(defun arxiv-query-latest (cat date-start date-end &optional max-num)
+  "Query arXiv for articles in a given category submitted between date-start and date-end."
   (catch 'myTag
-    (setq date-start date)
-    (setq date-end (number-to-string (+ (string-to-int date) 1)))
-    ;; (setq date-end date)
-    ;; (setq date-start (number-to-string (+ (string-to-int date) -1)))
+    (unless (> (string-to-number date-end) (string-to-number date-start))
+      (user-error "incorrect date specification"))
     (setq my-list nil)
     (setq my-buffer (url-retrieve-synchronously (arxiv-search-date date-start date-end cat)))
     ;; (message "%s" my-buffer)
