@@ -192,42 +192,7 @@ if date-end is not provided, it defaults to date-start+1."
   (interactive)
   (catch 'myTag
     (unless date-end (setq date-end (number-to-string (+ (string-to-number date-start) 1))))
-    (setq arxiv-entry-list (arxiv-query-latest category date-start date-end))
-    (unless arxiv-entry-list
-      (throw 'myTag "No articles at this time."))
-    (unless arxiv-buffer
-      (setq arxiv-buffer (get-buffer-create "*arXiv-update*")))
-    (save-excursion
-      (set-buffer arxiv-buffer)
-      (mapcar
-       (lambda (entry)
-         (progn 
-           (insert (format "Title: %s\nAuthors: " (cdr (assoc 'title entry))))
-           (let ((authors (cdr (assoc 'authors entry))))
-             (while authors
-               (progn 
-                 (insert (format "%s" (car authors)))
-                 (setq authors (cdr authors))
-                 (if authors
-                     (insert ", "))
-                 )))
-           (insert (format "\nDate: %s\n\n" (cdr (assoc 'date entry))))
-           ))
-       arxiv-entry-list)
-      (goto-char (point-min))
-      (arxiv-highlight-entry 0 (point))
-      (setq arxiv-current-entry 0)
-      (arxiv-mode)
-      ;; (message "Total number of entries: %d" (safe-length arxiv-entry-list))
-      (message "Total number of entries: %d" arxiv-query-total-results)
-      (setq buffer-read-only t))
-    (switch-to-buffer arxiv-buffer)
-    arxiv-buffer))
-
-(defun arxiv-populate (page num-per-page url &optional arxiv-buffer arg)
-  (interactive)
-  (catch 'myTag 
-    (setq arxiv-entry-list (arxiv-query url))
+    (setq arxiv-entry-list (arxiv-query category date-start date-end))
     (unless arxiv-entry-list
       (throw 'myTag "No articles at this time."))
     (unless arxiv-buffer
