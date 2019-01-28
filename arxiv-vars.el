@@ -32,6 +32,11 @@
 (defvar arxiv-current-entry nil
   "Current entry in the arXiv article list.")
 
+(defvar arxiv-catagories 
+  '(astro-ph cond-mat gr-qc hep-ex hep-lat hep-ph hep-th math-ph nlin nucl-ex nucl-th physics quant-ph
+	     math corr q-bio q-fin stat eess econ)
+  "availble categories in arXiv searching")
+
 (defcustom arxiv-entries-per-page 100
   "Number of entries per page in the article list."
   :group 'arxiv-preferences
@@ -41,6 +46,13 @@
   "Default browser for opening the arXiv url."
   :group 'arxiv-preferences
   :type 'string)
+
+(defcustom arxiv-default-catagory "hep-th"
+  "Default search catagory when using arxiv-read."
+  :group 'arxiv-preferences
+  :type 'string
+  :options arxiv-catagories)
+
 
 ;; Defining custom faces
 (defvar arxiv-title-face 'arxiv-title-face)
@@ -83,7 +95,6 @@ abstract viewing window."
         ;; (modify-syntax-entry ?\n "> b" synTable)
         (modify-syntax-entry ?$ "($" synTable)
         (modify-syntax-entry ?$ ")$" synTable)
-
         synTable))
 
 (defvar arxiv-abstract-prettify-symbols-alist

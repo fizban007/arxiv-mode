@@ -12,6 +12,7 @@
 
 (require 'overlay)
 (require 'button)
+(require 'org)
 (require 'arxiv-vars)
 (require 'arxiv-query)
 (require 'arxiv-abstract)
@@ -256,18 +257,14 @@
     (switch-to-buffer arxiv-buffer)
     arxiv-buffer))
 
-(defun arxiv-read (date category)
-  "Read the articles submitted the day before a given date, in a
-given category. Defaults to yesterday."
-  (interactive (list (read-string "Enter desired date (default yesterday): ") (read-string "Enter desired category (default hep-th): ")))
-  (if (equal date "")
-    (setq date (number-to-string (- (string-to-int (format-time-string "%Y%m%d")) 1))))
-  (if (equal category "")
-    (setq category "hep-th"))
-  ;; (message "%S %S" date category)
-  (arxiv-populate-page 0 arxiv-entries-per-page date category)
-  )
-
+(defun arxiv-read ()
+  (interactive)
+  (let*
+      ((date (replace-regexp-in-string "-" "" (org-read-date nil nil nil "Enter desired date")))
+       (category (completing-read "Select catagory: "
+		 arxiv-catagories nil t nil nil arxiv-default-catagory)))
+    (arxiv-populate-page 0 arxiv-entries-per-page date category)))
+ 
 (defun arxiv-query-author (author category)
   "Find the papers by author name."
   (interactive (list (read-string "Author name: ") (read-string "Enter desired category (default astro-ph): ")))
