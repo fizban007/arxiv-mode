@@ -121,8 +121,9 @@
         (insert (format "\n\nAbstract: %s" (cdr (assoc 'abstract entry))))
         ))
     (arxiv-abstract-mode)
-    (setq buffer-read-only t)
-    )
+    (setq-local prettify-symbols-alist arxiv-abstract-prettify-symbols-alist)
+    (prettify-symbols-mode)
+    (setq buffer-read-only t))
   (setq arxiv-abstract-window (get-buffer-window abstract-buffer)))
 
 (defun arxiv-show-hide-abstract (&optional arg)
