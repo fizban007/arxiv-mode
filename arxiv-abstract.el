@@ -11,9 +11,22 @@
 
 (setq arxiv-keyword-list-abstract
       '(("Title:\\(.*?\\)$" . (1 arxiv-title-face))
-        ("Abstract:\\([[:ascii:]]+\\)" . (1 arxiv-abstract-face))
+;;        ("Abstract:\\([[:ascii:]]+?\\)\n\n" . (1 arxiv-abstract-face))
 	("\\$[^$]+\\$" 0 arxiv-abstract-math-face t)
-        ("Title\\|Authors\\|Date\\|Submitted\\|Abstract" . arxiv-keyword-face)))
+        ("Title:\\|Authors:\\|Date:\\|Submitted:\\|Updated:\\|Abstract:\\|Subjects:\\|Journal:\\|DOI:\\|Comments:" . arxiv-keyword-face)))
+
+(defun test-font-lock-extend-region ()
+  "Extend the search region to include an entire block of text."
+  ;; Avoid compiler warnings about these global variables from font-lock.el.
+  ;; See the documentation for variable `font-lock-extend-region-functions'.
+  (eval-when-compile (defvar font-lock-beg) (defvar font-lock-end))
+  (save-excursion
+    (goto-char font-lock-beg)
+    (let ((found (or (re-search-backward "\n\n" nil t) (point-min))))
+      (goto-char font-lock-end)
+      (when (re-search-forward "\n\n" nil t)
+        (setq font-lock-end (point)))
+      (setq font-lock-beg found))))
 
 ;; (defun arxiv-abstract-mode ()
 ;;   "Major mode for reading arXiv updates online."
@@ -32,10 +45,11 @@
 ;;   (set-syntax-table arxiv-abstract-syntax-table)
 ;;   ;; (use-local-map arxiv-abstract-mode-map)
 ;;   (run-hooks 'arxiv-abstract-mode-hook))
-(define-derived-mode arxiv-abstract-mode text-mode "arXiv"
+(define-derived-mode arxiv-abstract-mode text-mode "arXiv-abstract"
   "Major mode for reading arXiv abstracts."
   (set (make-local-variable 'font-lock-defaults) '(arxiv-keyword-list-abstract))
   (setq font-lock-multiline t)
+  (add-hook 'font-lock-extend-region-functions 'test-font-lock-extend-region)
 )
   
 

@@ -118,12 +118,28 @@
               (if authors
                   (insert ", "))
               )))
-        (insert (format "\n\nSubmitted: %s" (cdr (assoc 'date entry))))
         (insert (format "\n\nAbstract: %s" (cdr (assoc 'abstract entry))))
+	(if (cdr (assoc 'comment entry))
+	    (insert (format "\n\nComments: %s" (cdr (assoc 'comment entry))))
+	  (insert "\n\nComments: N/A"))
+	(insert (format "\nSubjects: "))
+	(let* ((cats (cdr (assoc 'categories entry))))
+	  (while cats
+	    (progn
+	      (let (field)
+		(setq field (symbol-name (cdr (assoc (intern-soft (car cats)) arxiv-subject-classifications))))
+		(insert (format "%s " (replace-regexp-in-string "_" " " field))))
+	       (insert (format "(%s)" (car cats)))
+	       (setq cats (cdr cats))
+	       (if cats (insert "; ")))))
+	(when (cdr (assoc 'journal entry)) (insert (format "\nJournal: %s" (cdr (assoc 'journal entry)))))
+	(when (cdr (assoc 'DOI entry)) (insert (format "\nDOI: %s" (cdr (assoc 'DOI entry)))))
+	(insert (format "\n\nSubmitted: %s" (cdr (assoc 'date entry))))
+	(insert (format "\nUpdated: %s" (cdr (assoc 'updated entry))))
         ))
     (arxiv-abstract-mode)
     (setq-local prettify-symbols-alist arxiv-abstract-prettify-symbols-alist)
-    (prettify-symbols-mode)
+    (prettify-symbols-mode 1)
     (setq buffer-read-only t))
   (setq arxiv-abstract-window (get-buffer-window abstract-buffer)))
 
@@ -186,8 +202,8 @@
   ;;   (evil-emacs-state)))
 
 (defun arxiv-populate-page (page num-per-page &optional arxiv-buffer)
-  "Populate the page of results according to the entry alist."
-  (if entries
+  "Populate the page of results according to arxiv-entry-list."
+  (if arxiv-entry-list
       (progn
 	(unless arxiv-buffer
 	  (setq arxiv-buffer (get-buffer-create "*arXiv-update*")))
