@@ -185,53 +185,47 @@
   ;; (eval-after-load 'evil
   ;;   (evil-emacs-state)))
 
-(defun arxiv-populate-page (page num-per-page category date-start &optional date-end arxiv-buffer)
-  "Populate the page of results according to provided search conditions.
-if date-end is not provided, it defaults to date-start+1."
-  ;; TODO: Need to figure out page separation mechanism
-  (interactive)
-  (catch 'myTag
-    (unless date-end (setq date-end (number-to-string (+ (string-to-number date-start) 1))))
-    (setq arxiv-entry-list (arxiv-query category date-start date-end))
-    (unless arxiv-entry-list
-      (throw 'myTag "No articles at this time."))
-    (unless arxiv-buffer
-      (setq arxiv-buffer (get-buffer-create "*arXiv-update*")))
-    (save-excursion
-      (set-buffer arxiv-buffer)
-      (mapcar
-       (lambda (entry)
-         (progn 
-           (insert (format "Title: %s\nAuthors: " (cdr (assoc 'title entry))))
-           (let ((authors (cdr (assoc 'authors entry))))
-             (while authors
-               (progn 
-                 (insert (format "%s" (car authors)))
-                 (setq authors (cdr authors))
-                 (if authors
-                     (insert ", "))
-                 )))
-           (insert (format "\nDate: %s\n\n" (cdr (assoc 'date entry))))
-           ))
-       arxiv-entry-list)
-      (goto-char (point-min))
-      (arxiv-highlight-entry 0 (point))
-      (setq arxiv-current-entry 0)
-      (arxiv-mode)
-      ;; (message "Total number of entries: %d" (safe-length arxiv-entry-list))
-      (message "Total number of entries: %d" arxiv-query-total-results)
-      (setq buffer-read-only t))
-    (switch-to-buffer arxiv-buffer)
-    arxiv-buffer))
+(defun arxiv-populate-page (page num-per-page &optional arxiv-buffer)
+  "Populate the page of results according to the entry alist."
+  (if entries
+      (progn
+	(unless arxiv-buffer
+	  (setq arxiv-buffer (get-buffer-create "*arXiv-update*")))
+	(save-excursion
+	  (set-buffer arxiv-buffer)
+	  (mapcar
+	   (lambda (entry)
+	     (progn 
+	       (insert (format "Title: %s\nAuthors: " (cdr (assoc 'title entry))))
+	       (let ((authors (cdr (assoc 'authors entry))))
+		 (while authors
+		   (progn 
+		     (insert (format "%s" (car authors)))
+		     (setq authors (cdr authors))
+		     (if authors
+			 (insert ", "))
+		     )))
+	       (insert (format "\nDate: %s\n\n" (cdr (assoc 'date entry))))))
+	   arxiv-entry-list)
+	  (goto-char (point-min))
+	  (arxiv-highlight-entry 0 (point))
+	  (setq arxiv-current-entry 0)
+	  (arxiv-mode)
+	  ;; (message "Total number of entries: %d" (safe-length arxiv-entry-list))
+	  (message "Total number of entries: %d" arxiv-query-total-results)
+	  (setq buffer-read-only t))
+	(switch-to-buffer arxiv-buffer))
+    ((message "No articles at this time."))))
 
 (defun arxiv-read ()
   "read arXiv articles published on a given date, in a specific category."
   (interactive)
   (let*
-      ((date (replace-regexp-in-string "-" "" (org-read-date nil nil nil "Enter desired date")))
+      ((date (string-to-number (replace-regexp-in-string "-" "" (org-read-date nil nil nil "Enter desired date"))))
        (category (completing-read "Select catagory: "
 				  arxiv-catagories nil t nil nil arxiv-default-catagory)))
-    (arxiv-populate-page 0 arxiv-entries-per-page category date)))
+    (setq arxiv-entry-list (arxiv-query category (int-to-string date) (int-to-string (+ 1 date))))
+    (arxiv-populate-page 0 arxiv-entries-per-page)))
 
 (defun arxiv-read-new ()
   "read new (submitted in the previous work day) arXiv articles in a given category."
@@ -240,29 +234,33 @@ if date-end is not provided, it defaults to date-start+1."
       ((date (string-to-number (format-time-string "%Y%m%d")))
        (day (string-to-number (format-time-string "%u")))
        (category (completing-read "Select catagory: "
-				  arxiv-catagories nil t nil nil arxiv-default-catagory)))
+				  arxiv-catagories nil t nil nil arxiv-default-catagory)))       
     (cond ((eq day 7) (setq date (- date 2)))
 	  ((eq day 1) (setq date (- date 3)))
 	  (t (setq date (- date 1))))
-    (arxiv-populate-page 0 arxiv-entries-per-page category (int-to-string date))))
+    (setq arxiv-entry-list (arxiv-query category (int-to-string date) (int-to-string (+ 1 date))))
+    (arxiv-populate-page 0 arxiv-entries-per-page)))
 
 (defun arxiv-read-recent ()
-  "read recent (past week) submissions of arXiv in a given category"
+  "read recent (past week) submissions of arXiv in a given category."
   (interactive)
   (let*
       ((date-end (string-to-number (format-time-string "%Y%m%d")))
        (date-start (- date-end 7))
        (category (completing-read "Select catagory: "
-				  arxiv-catagories nil t nil nil arxiv-default-catagory)))
-    (arxiv-populate-page 0 arxiv-entries-per-page category (int-to-string date-start) (int-to-string date-end))))
+				  arxiv-catagories nil t nil nil arxiv-default-catagory)))       
+    (setq arxiv-entry-list (arxiv-query category (int-to-string date-start) (int-to-string date-end)))
+    (arxiv-populate-page 0 arxiv-entries-per-page)))
 
-(defun arxiv-query-author (author category)
+(defun arxiv-read-author ()
   "Find the papers by author name."
-  (interactive (list (read-string "Author name: ") (read-string "Enter desired category (default astro-ph): ")))
-  (arxiv-populate-page 0 50 (arxiv-search-author author category)))
-
-;; (arxiv-read-latest "20131008")
-     ;; (insert "\n
+  (interactive)
+  (let*
+      ((author (read-string "Authors name (use space to seperate): "))
+       (category (completing-read "Select catagory: "
+				  arxiv-catagories nil t nil nil arxiv-default-catagory)))
+  (setq arxiv-entry-list (arxiv-query-author author category))
+  (arxiv-populate-page 0 arxiv-entries-per-page)))
 
 (provide 'arxiv-mode)
 
