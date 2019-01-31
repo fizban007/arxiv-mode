@@ -209,6 +209,11 @@
   :type 'string
   :options arxiv-catagories)
 
+(defcustom arxiv-default-download-folder "~/Downloads"
+  "Default download folder to save PDF file."
+  :group 'arxiv-preferences
+  :type 'string)
+
 
 ;; Defining custom faces
 (defvar arxiv-title-face 'arxiv-title-face)

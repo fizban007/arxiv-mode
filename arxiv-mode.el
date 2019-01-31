@@ -88,8 +88,21 @@
   ;; (message "%S" (nth arxiv-current-entry arxiv-entry-list))
   (setq url (cdr (assoc 'url (nth arxiv-current-entry arxiv-entry-list))))
   ;; (start-process "arxiv-webpage" nil arxiv-default-browser url)
-  (browse-url url)
-  )
+  (browse-url url))
+
+(defun arxiv-download-pdf ()
+  "Download and save the highlighted paper to desired folder.
+You can change the default folder by customizing the variable arxiv-default-download-folder."
+  (interactive)
+  (let ((url (cdr (assoc 'pdf (nth arxiv-current-entry arxiv-entry-list))))
+	(newfile nil))
+    (string-match "/[^/]+?$" url)
+    (setq newfile (concat (match-string 0 url) ".pdf"))
+    (setq newfile (read-file-name "save pdf as: "
+				  (expand-file-name arxiv-default-download-folder)
+				  (concat arxiv-default-download-folder newfile)
+				  nil newfile))
+    (url-copy-file url newfile)))
 
 (defun arxiv-customize ()
   "Customize the arxiv-mode"
@@ -134,12 +147,12 @@
     (setq arxiv-abstract-window nil)))
 
 
-;;======================convinent keymaps for iserlohn========================================
 (setq arxiv-mode-map (make-sparse-keymap))
 (define-key arxiv-mode-map "k" 'arxiv-next-entry)
 (define-key arxiv-mode-map "i" 'arxiv-prev-entry)
 (define-key arxiv-mode-map (kbd "RET") 'arxiv-open-current-url)
 (define-key arxiv-mode-map (kbd "SPC") 'arxiv-show-hide-abstract)
+(define-key arxiv-mode-map "p" 'arxiv-download-pdf)
 ;; (define-key arxiv-mode-map "q" '(lambda () (interactive) (kill-buffer "*arXiv-update*")))
 (define-key arxiv-mode-map "q" 'arxiv-exit)
 

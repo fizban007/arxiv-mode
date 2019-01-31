@@ -16,11 +16,13 @@ and category you would like to read.
 
 You can also use `M-x arxiv-read-new` and `M-x arxiv-read-recent`
 to browse new and recent submissions in the given category.
+Use `M-x arxiv-read-author` to search for specific author(s).
 
-In the article list, use `n` and `p` to navigate the article list. One
+In the article list, use `i` and `k` to navigate the article list. One
 can use `C-u` to prefix the navigation commands for more movement
-steps. Press `a` to toggle visibility of the abstract window. Press
-`u` to open the entry in a web browser. Press `q` to exit the mode.
+steps. Press `SPC` to toggle visibility of the abstract window. Press
+`RET` to open the entry in a web browser. Press `p` to download the pdf.
+Press `q` to exit the mode.
 
 Installation
 ============
