@@ -96,9 +96,7 @@
   (interactive)
   (customize-group 'arxiv))
 
-(defun arxiv-show-abstract (&optional arg)
-  "Show the abstract for the current highlighted entry."
-  (interactive)
+(defun arxiv-show-abstract ()
   (unless arxiv-abstract-window
     (setq abstract-window (split-window-right)))
   (setq abstract-buffer (get-buffer-create "*arXiv-abstract*"))
@@ -107,42 +105,13 @@
     (set-buffer abstract-buffer)
     (setq buffer-read-only nil)
     (erase-buffer)
-    (let ((entry (nth arxiv-current-entry arxiv-entry-list)))
-      (progn 
-        (insert (format "Title: %s\n\nAuthors: " (cdr (assoc 'title entry))))
-        (let ((authors (cdr (assoc 'authors entry))))
-          (while authors
-            (progn 
-              (insert (format "%s" (car authors)))
-              (setq authors (cdr authors))
-              (if authors
-                  (insert ", "))
-              )))
-        (insert (format "\n\nAbstract: %s" (cdr (assoc 'abstract entry))))
-	(if (cdr (assoc 'comment entry))
-	    (insert (format "\n\nComments: %s" (cdr (assoc 'comment entry))))
-	  (insert "\n\nComments: N/A"))
-	(insert (format "\nSubjects: "))
-	(let* ((cats (cdr (assoc 'categories entry))))
-	  (while cats
-	    (progn
-	      (let (field)
-		(setq field (symbol-name (cdr (assoc (intern-soft (car cats)) arxiv-subject-classifications))))
-		(insert (format "%s " (replace-regexp-in-string "_" " " field))))
-	       (insert (format "(%s)" (car cats)))
-	       (setq cats (cdr cats))
-	       (if cats (insert "; ")))))
-	(when (cdr (assoc 'journal entry)) (insert (format "\nJournal: %s" (cdr (assoc 'journal entry)))))
-	(when (cdr (assoc 'DOI entry)) (insert (format "\nDOI: %s" (cdr (assoc 'DOI entry)))))
-	(insert (format "\n\nSubmitted: %s" (cdr (assoc 'date entry))))
-	(insert (format "\nUpdated: %s" (cdr (assoc 'updated entry))))
-        ))
-    (arxiv-abstract-mode)
+    (arxiv-abstract-mode)    
+    (arxiv-format-abstract-page (nth arxiv-current-entry arxiv-entry-list))
     (setq-local prettify-symbols-alist arxiv-abstract-prettify-symbols-alist)
     (prettify-symbols-mode 1)
     (setq buffer-read-only t))
   (setq arxiv-abstract-window (get-buffer-window abstract-buffer)))
-
+  
 (defun arxiv-show-hide-abstract (&optional arg)
   "Toggle the visibility of the abstract. If the abstract window
   does not exist, then create it and display appropriate content,

@@ -223,10 +223,28 @@
   "Face name for keywords in the arXiv article list."
   :group 'arxiv-fontification)
 
+(defvar arxiv-author-face 'arxiv-author-face)
+(defface arxiv-author-face
+  '((t (:inherit font-lock-type-face)))
+  "Face name for authors in the arXiv article list."
+  :group 'arxiv-fontification)
+
 (defvar arxiv-abstract-face 'arxiv-abstract-face)
 (defface arxiv-abstract-face
-  '((t (:inherit font-lock-string-face)))
+  '((t (:inherit font-lock-doc-face)))
   "Face name for abstract in the arXiv abstract viewing window."
+  :group 'arxiv-fontification)
+
+(defvar arxiv-subfield-face 'arxiv-subfield-face)
+(defface arxiv-subfield-face
+  '((t (:inherit default :height 0.9)))
+  "Face name for subfields (comments, subjects, etc.) in the arXiv abstract viewing window."
+  :group 'arxiv-fontification)
+
+(defvar arxiv-subfield-face-bold 'arxiv-subfield-face-bold)
+(defface arxiv-subfield-face-bold
+  '((t (:inherit arxiv-subfield-face :weight semi-bold)))
+  "This is the bold version of arxiv-subfield-face."
   :group 'arxiv-fontification)
 
 (defvar arxiv-abstract-math-face 'arxiv-abstract-math-face)
