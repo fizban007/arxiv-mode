@@ -133,7 +133,7 @@ Return a alist with various fields."
 (defun arxiv-query (cat date-start date-end &optional max-num)
   "Query arXiv for articles in a given category submitted between date-start and date-end."
   (unless (> (string-to-number date-end) (string-to-number date-start))
-    (user-error "incorrect date specification"))  
+    (user-error "incorrect date specification"))
   (arxiv-parse-api (arxiv-geturl-date date-start date-end cat)))
 
 (defun arxiv-query-author (author &optional cat max-num)
@@ -146,4 +146,4 @@ Return a alist with various fields."
   (arxiv-parse-api arxiv-api-url))
 
 (provide 'arxiv-query)
-;;; arxiv-query.el ends hereG
+;;; arxiv-query.el ends here

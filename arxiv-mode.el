@@ -155,7 +155,7 @@ You can change the default folder by customizing the variable arxiv-default-down
 (define-key arxiv-mode-map (kbd "RET") 'arxiv-open-current-url)
 (define-key arxiv-mode-map (kbd "SPC") 'arxiv-show-hide-abstract)
 (define-key arxiv-mode-map "d" 'arxiv-download-pdf)
-;; (define-key arxiv-mode-map "q" '(lambda () (interactive) (kill-buffer "*arXiv-update*")))
+(define-key arxiv-mode-map "r" 'arxiv-refine-search)
 (define-key arxiv-mode-map "q" 'arxiv-exit)
 
 (setq arxiv-keyword-list-default
@@ -237,25 +237,31 @@ You can change the default folder by customizing the variable arxiv-default-down
   "read new (submitted in the previous work day) arXiv articles in a given category."
   (interactive)
   (let*
-      ((date (string-to-number (format-time-string "%Y%m%d")))
-       (day (string-to-number (format-time-string "%u")))
+      ((date-start (format-time-string "%Y%m%d" (org-read-date nil t "-1")))
+       (date-end nil)
+       (day (format-time-string "%U" (org-read-date nil t "-1")))
        (category (completing-read "Select category: "
-				  arxiv-categories nil t nil nil arxiv-default-category)))       
-    (cond ((eq day 7) (setq date (- date 2)))
-	  ((eq day 1) (setq date (- date 3)))
-	  (t (setq date (- date 1))))
-    (setq arxiv-entry-list (arxiv-query category (int-to-string date) (int-to-string (+ 1 date))))
+				  arxiv-categories nil t nil nil arxiv-default-category)))
+    (cond
+     ((equal day "Saturday") (progn
+		   (setq date-start (format-time-string "%Y%m%d" (org-read-date nil t "-2")))
+		   (setq date-end (format-time-string "%Y%m%d" (org-read-date nil t "-1")))))
+     ((equal day "Sunday") (progn
+		   (setq date-start (format-time-string "%Y%m%d" (org-read-date nil t "-3")))
+		   (setq date-end (format-time-string "%Y%m%d" (org-read-date nil t "-2")))))
+     (t (setq date-end (format-time-string "%Y%m%d" (org-read-date nil t "")))))
+    (setq arxiv-entry-list (arxiv-query category date-start date-end))
     (arxiv-populate-page 0 arxiv-entries-per-page)))
 
 (defun arxiv-read-recent ()
   "read recent (past week) submissions of arXiv in a given category."
   (interactive)
   (let*
-      ((date-end (string-to-number (format-time-string "%Y%m%d")))
-       (date-start (- date-end 7))
+      ((date-start (format-time-string "%Y%m%d" (org-read-date nil t "-8")))
+       (date-end (format-time-string "%Y%m%d" (org-read-date nil t "-1")))
        (category (completing-read "Select category: "
-				  arxiv-categories nil t nil nil arxiv-default-category)))       
-    (setq arxiv-entry-list (arxiv-query category (int-to-string date-start) (int-to-string date-end)))
+				  arxiv-categories nil t nil nil arxiv-default-category)))
+    (setq arxiv-entry-list (arxiv-query category date-start date-end))
     (arxiv-populate-page 0 arxiv-entries-per-page)))
 
 (defun arxiv-read-author ()
@@ -272,7 +278,13 @@ You can change the default folder by customizing the variable arxiv-default-down
   "Do a complex search on arXiv database and list the result in buffer."
   (interactive)
   (setq arxiv-query-data-list nil)
-  (arxiv-search-menu/body))
+  (arxiv-search-menu/body)
+  )
+
+(defun arxiv-refine-search ()
+  "Refine search results in the *arXiv-update* window."
+  )
+
 
 (defun arxiv-query-data-update (field condition)
   "Ask and update the variable arxiv-query-data-list in the corresponding search field.
@@ -292,7 +304,7 @@ Do exclusive update if condition is nil."
 			       ((date-min (string-to-number (replace-regexp-in-string "-" "" (org-read-date nil nil nil "Enter starting date"))))
 				(date-max (string-to-number (replace-regexp-in-string "-" "" (org-read-date nil nil nil "Enter ending date")))))
 			     (setq context (format "[%d0000+TO+%d0000]" date-min date-max)))))
-	(setq arxiv-query-data-list (cons (list field condition context) arxiv-query-data-list)))
+	(setq arxiv-query-data-list (cons (list field condition context) arxiv-query-data-list))) ; this reversed the order of the list, need to fix it later on
     (message "Only inclusive searching is allowed as the first keyword."))
   (arxiv-search-menu/body))
 
@@ -301,13 +313,13 @@ Do exclusive update if condition is nil."
   (interactive)
   (if arxiv-query-data-list
       (progn
-	(setq arxiv-query-data-list (nreverse arxiv-query-data-list))
+	(setq arxiv-query-data-list (nreverse arxiv-query-data-list)) ; fix the reverse order caused in qrxiv-query-data-update ()
 	(setq arxiv-entry-list (arxiv-query-general))
 	(arxiv-populate-page 0 arxiv-entries-per-page))
-    (message "quit without search conditions")))
+    (message "quit with blank search conditions")))
 
 
-(defhydra arxiv-search-menu (:color blue :foreign-keys warn :exit t)
+(defhydra arxiv-search-menu (:color blue :foreign-keys run :exit t)
   "
 Add arXiv search condition:
 _a_: all                   _i_: article ID            _t_: submitted time
@@ -328,7 +340,7 @@ _p_: perform search with current condition(s)       _q_: quit
   ("q" (setq arxiv-query-data-list nil) "quit")
   )
  
-(defhydra arxiv-search-menu-ex (:color red :foreign-keys warn :exit t)
+(defhydra arxiv-search-menu-ex (:color red :foreign-keys run :exit t)
   "
 Exclude arXiv search condition:
 _a_: all                   _i_: article ID            _t_: submitted time
