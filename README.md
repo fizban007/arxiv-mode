@@ -18,10 +18,12 @@ You can also use `M-x arxiv-read-new` and `M-x arxiv-read-recent`
 to browse new and recent submissions in the given category.
 Use `M-x arxiv-read-author` to search for specific author(s).
 
-In the article list, use `i` and `k` to navigate the article list. One
-can use `C-u` to prefix the navigation commands for more movement
-steps. Press `SPC` to toggle visibility of the abstract window. Press
-`RET` to open the entry in a web browser. Press `p` to download the pdf.
+For complex searches, use `M-x arxiv-complex-search`.
+This command allows user to dynamically refine and modify search conditions.
+
+In the article list, use `n` and `p` to navigate the article list.
+Press `SPC` to toggle visibility of the abstract window. Press
+`RET` to open the entry in a web browser. Press `d` to download the pdf.
 Press `q` to exit the mode.
 
 Installation

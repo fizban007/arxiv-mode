@@ -2,8 +2,10 @@
 (require 'arxiv-vars)
 
 (setq arxiv-abstract-mode-map (make-sparse-keymap))
-;;======================convinent keymap for iserlohn================================
-(define-key arxiv-abstract-mode-map "RET" 'arxiv-open-current-url)        
+(define-key arxiv-abstract-mode-map (kbd "RET") 'arxiv-open-current-url)
+(define-key arxiv-abstract-mode-map (kbd "SPC") 'arxiv-show-hide-abstract)
+(define-key arxiv-abstract-mode-map "d" 'arxiv-download-pdf)
+(define-key arxiv-abstract-mode-map "q" 'arxiv-exit)
 
 (defun arxiv-insert-with-face (string face-property)
   "wrapper function to insert a string with given face property.
@@ -71,25 +73,8 @@ the optional misc is a plist for modification of additional properties"
         (setq font-lock-end (point)))
       (setq font-lock-beg found))))
 
-;; (defun arxiv-abstract-mode ()
-;;   "Major mode for reading arXiv updates online."
-;;   (interactive)
-;;   (kill-all-local-variables)
-;;   (setq major-mode 'arxiv-abstract-mode)
-;;   (setq mode-name "Abstract")
-;;   ;; (make-local-variable 'paragraph-separate)
-;;   ;; (make-local-variable 'paragraph-start)
-;;   ;; (make-local-variable 'page-delimiter)
-;;   ;; (setq paragraph-start "^Title:")
-;;   ;; (setq paragraph-separate " [ \t\^L]*$")
-;;   ;; (setq page-delimiter "^Title: ")
-;;   (setq font-lock-multiline t)
-;;   (setq font-lock-defaults '(arxiv-keyword-list-abstract))
-;;   (set-syntax-table arxiv-abstract-syntax-table)
-;;   ;; (use-local-map arxiv-abstract-mode-map)
-;;   (run-hooks 'arxiv-abstract-mode-hook))
 (define-derived-mode arxiv-abstract-mode text-mode "arXiv-abstract"
-  "Major mode for reading arXiv abstracts."
+  "Major mode for reading arXiv abstracts."  
 )
   
 

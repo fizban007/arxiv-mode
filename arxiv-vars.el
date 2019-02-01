@@ -32,7 +32,23 @@
 (defvar arxiv-current-entry nil
   "Current entry in the arXiv article list.")
 
-(defvar arxiv-catagories 
+(defvar arxiv-query-results-min nil
+  "Current minimun entry of query result.")
+
+(defvar arxiv-query-results-max nil
+  "Current maxmum entry of query result.")
+
+(defvar arxiv-query-data-list nil
+  "list of current query data. 
+Elements of this list must have the form (field condition context)
+Available fields are 'all, 'id, 'time, 'title, 'author, 'abstract, 'comment, 'journal and 'category
+If condition is nil then the the search excludes the context and vice versa.
+context is a string seperated by quotes and spaces.")
+
+(defvar arxiv-api-url nil
+  "current url used to do api search")
+
+(defvar arxiv-categories 
   '(astro-ph cond-mat gr-qc hep-ex hep-lat hep-ph hep-th math-ph nlin nucl-ex nucl-th physics quant-ph
 	     math corr q-bio q-fin stat eess econ)
   "availble categories in arXiv searching")
@@ -203,11 +219,11 @@
   :group 'arxiv-preferences
   :type 'string)
 
-(defcustom arxiv-default-catagory "hep-th"
-  "Default search catagory when using arxiv-read."
+(defcustom arxiv-default-category "hep-th"
+  "Default search category when using arxiv-read."
   :group 'arxiv-preferences
   :type 'string
-  :options arxiv-catagories)
+  :options arxiv-categories)
 
 (defcustom arxiv-default-download-folder "~/Downloads"
   "Default download folder to save PDF file."
@@ -242,7 +258,7 @@
 
 (defvar arxiv-subfield-face 'arxiv-subfield-face)
 (defface arxiv-subfield-face
-  '((t (:inherit default :height 0.9)))
+  '((t (:inherit default :height 1.0)))
   "Face name for subfields (comments, subjects, etc.) in the arXiv abstract viewing window."
   :group 'arxiv-fontification)
 

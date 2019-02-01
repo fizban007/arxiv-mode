@@ -19,12 +19,48 @@
               (cdr (assoc 'href sub-list)))
           (arxiv-extract-pdf (cdr my-list))))))
 
+(defun arxiv-parse-query-data (query-string)
+  "Helper function to parse the input search data to pre-api form.
+replace space by + and \" to %22"
+  (setq query-string (replace-regexp-in-string "\\(^ +\\| +$\\)" "" query-string))
+  (setq query-string (replace-regexp-in-string " +" "+" query-string))    
+  (setq query-string (replace-regexp-in-string "\"" "%22" query-string))
+  query-string)
+
+(defun arxiv-get-api-url (&optional start max-num)
+  "get the API url according to the arxiv-query-data-list.
+When using this function, make sure that the first item of the list has t condition."
+  (unless start (setq start 0))
+  (unless max-num (setq max-num arxiv-entries-per-page))
+  (let ((url (format "%s?search_query=" arxiv-url))
+	(parsed-query nil)
+	(body nil))
+    (dolist (query-data arxiv-query-data-list url)
+      (if body
+	  (if (nth 1 query-data)
+	      (setq url (concat url "+AND+"))
+	    (setq url (concat url "+ANDNOT+")))
+	(setq body t))
+      (let ((field (car query-data)))
+	(cond
+	 ((eq field 'all) (setq url (concat url "all:")))
+	 ((eq field 'id) (setq url (concat url "id:")))
+	 ((eq field 'time) (setq url (concat url "submittedDate:")))
+	 ((eq field 'title) (setq url (concat url "ti:")))
+	 ((eq field 'author) (setq url (concat url "au:")))
+	 ((eq field 'abstract) (setq url (concat url "abs:")))
+	 ((eq field 'comment) (setq url (concat url "co:")))
+	 ((eq field 'journal) (setq url (concat url "jr:")))
+	 ((eq field 'category) (setq url (concat url "cat:"))))
+	(setq url (concat url (arxiv-parse-query-data (nth 2 query-data))))))
+    (setq url (concat url (format "&start=%d&max_results=%d" start max-num)))))
+
 (defun arxiv-geturl-date (dateStart dateEnd category &optional start max-num)
   "get the API url for articles between dateStart and dateEnd in the specified category."
   (unless start
     (setq start 0))  ; Start with the first result
   (unless max-num
-    (setq max-num 100))  ; Default to 100 results per page
+    (setq max-num arxiv-entries-per-page))
   (format "%s?search_query=submittedDate:[%s0000+TO+%s0000]+AND+cat:%s*&sortBy=submittedDate&sortOrder=descending&start=%d&max_results=%d" 
           arxiv-url dateStart dateEnd category start max-num))
 
@@ -33,7 +69,7 @@
   (unless start
     (setq start 0))  ; Start with the first result
   (unless max-num
-    (setq max-num 100))  ; Default to 100 results per page
+    (setq max-num arxiv-entries-per-page))
   (setq author (replace-regexp-in-string " " "+" author))
   (setq author (replace-regexp-in-string "\"" "%22" author))
   (if category
@@ -53,13 +89,11 @@ Return a alist with various fields."
   (setq my-list nil)
   (setq my-buffer (url-retrieve-synchronously url))
   (set-buffer my-buffer)
-  ;; (goto-char (point-min))
-  ;;(message "%d" (point-max))
-  ;;(setq my-point (search-forward "<?xml"))
-  ;;(goto-char (- my-point 5))
   (setq root (car (xml-parse-region)))
   (setq arxiv-query-total-results (string-to-number (arxiv-getxml-context root 'opensearch:totalResults)))
-  (message "%S" arxiv-query-total-results)
+  (setq arxiv-query-results-min (+ 1 (string-to-number (arxiv-getxml-context root 'opensearch:startIndex))))
+  (setq arxiv-query-results-max (+ arxiv-query-total-results -1 (string-to-number (arxiv-getxml-context root 'opensearch:itemsPerPage))))
+  (when (< arxiv-query-total-results arxiv-query-results-max) (setq arxiv-query-results-max arxiv-query-total-results))
   (setq entries (xml-get-children root 'entry))
   (mapcar 
    (lambda (paper)
@@ -93,12 +127,8 @@ Return a alist with various fields."
 			   (categories . ,my-categories)
 			   (pdf . ,my-pdf)))
        (setq my-list (append my-list `(,alist-entry)))
-       ;; (message "%S\n" alist-entry)
-       ;; )) entries)
        )) entries)
   my-list)
-;; (message "\n Title: %s\n Authors: %S\n URL: %s\n Abstract: %S \n"
-;;          title names url abstract)
 
 (defun arxiv-query (cat date-start date-end &optional max-num)
   "Query arXiv for articles in a given category submitted between date-start and date-end."
@@ -109,6 +139,11 @@ Return a alist with various fields."
 (defun arxiv-query-author (author &optional cat max-num)
   "Query arXiv for articles by certain authors (in a given category)."
   (arxiv-parse-api (arxiv-geturl-author author cat)))
-  
+
+(defun arxiv-query-general ()
+  "Do a complex search on arXiv for articles according to the list arxiv-query-data-list."
+  (setq arxiv-api-url (arxiv-get-api-url))
+  (arxiv-parse-api arxiv-api-url))
+
 (provide 'arxiv-query)
 ;;; arxiv-query.el ends hereG

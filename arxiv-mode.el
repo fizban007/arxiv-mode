@@ -13,6 +13,7 @@
 (require 'overlay)
 (require 'button)
 (require 'org)
+(require 'hydra)
 (require 'arxiv-vars)
 (require 'arxiv-query)
 (require 'arxiv-abstract)
@@ -60,7 +61,8 @@
       (re-search-forward "^Title:" nil t nil)
       (beginning-of-line 1)
       (arxiv-highlight-entry 0 (point))))
-      (setq arxiv-current-entry (/ (line-number-at-pos (point)) 4))
+  (setq arxiv-current-entry (/ (line-number-at-pos (point)) 4))
+  (arxiv-update-headerline)
   (when arxiv-abstract-window
     (arxiv-show-abstract)))
 
@@ -78,7 +80,8 @@
       (re-search-backward "^Title:" nil t nil)
       (beginning-of-line 1)
       (arxiv-highlight-entry 0 (point))))
-      (setq arxiv-current-entry (/ (line-number-at-pos (point)) 4))
+  (setq arxiv-current-entry (/ (line-number-at-pos (point)) 4))
+  (arxiv-update-headerline)
   (when arxiv-abstract-window
     (arxiv-show-abstract)))
 
@@ -139,20 +142,19 @@ You can change the default folder by customizing the variable arxiv-default-down
 (defun arxiv-exit (&optional arg)
   "Exit from the arXiv mode, deleting all relevant buffers."
   (interactive)
-  (kill-buffer "*arXiv-update*")
-  (if (get-buffer "*arXiv-abstract*")
-      (kill-buffer "*arXiv-abstract*"))
   (when arxiv-abstract-window
     (delete-window arxiv-abstract-window)
-    (setq arxiv-abstract-window nil)))
-
+    (setq arxiv-abstract-window nil))
+  (kill-buffer "*arXiv-update*")
+  (when (get-buffer "*arXiv-abstract*")
+    (kill-buffer "*arXiv-abstract*")))
 
 (setq arxiv-mode-map (make-sparse-keymap))
-(define-key arxiv-mode-map "k" 'arxiv-next-entry)
-(define-key arxiv-mode-map "i" 'arxiv-prev-entry)
+(define-key arxiv-mode-map "p" 'arxiv-prev-entry)
+(define-key arxiv-mode-map "n" 'arxiv-next-entry)
 (define-key arxiv-mode-map (kbd "RET") 'arxiv-open-current-url)
 (define-key arxiv-mode-map (kbd "SPC") 'arxiv-show-hide-abstract)
-(define-key arxiv-mode-map "p" 'arxiv-download-pdf)
+(define-key arxiv-mode-map "d" 'arxiv-download-pdf)
 ;; (define-key arxiv-mode-map "q" '(lambda () (interactive) (kill-buffer "*arXiv-update*")))
 (define-key arxiv-mode-map "q" 'arxiv-exit)
 
@@ -178,10 +180,16 @@ You can change the default folder by customizing the variable arxiv-default-down
   (setq font-lock-defaults '(arxiv-keyword-list-default))
   (set-syntax-table arxiv-mode-syntax-table)
   (use-local-map arxiv-mode-map)
+  (setq header-line-format "")
   ;; (setq font-lock-multiline t)
   (run-mode-hooks 'arxiv-mode-hook))
+
   ;; (eval-after-load 'evil
   ;;   (evil-emacs-state)))
+
+(defun arxiv-update-headerline ()
+  "update the header line of *arxiv-update* buffer."
+  (setq header-line-format (format " search result for: %s  %d/%d" arxiv-api-url (+ 1 arxiv-current-entry) arxiv-query-total-results)))
 
 (defun arxiv-populate-page (page num-per-page &optional arxiv-buffer)
   "Populate the page of results according to arxiv-entry-list."
@@ -209,19 +217,19 @@ You can change the default folder by customizing the variable arxiv-default-down
 	  (arxiv-highlight-entry 0 (point))
 	  (setq arxiv-current-entry 0)
 	  (arxiv-mode)
-	  ;; (message "Total number of entries: %d" (safe-length arxiv-entry-list))
-	  (message "Total number of entries: %d" arxiv-query-total-results)
+	  (message "Showing results %d-%d of %d" arxiv-query-results-min arxiv-query-results-max arxiv-query-total-results)
+	  (arxiv-update-headerline)
 	  (setq buffer-read-only t))
 	(switch-to-buffer arxiv-buffer))
-    ((message "No articles at this time."))))
+    (message "No articles at this time.")))
 
 (defun arxiv-read ()
   "read arXiv articles published on a given date, in a specific category."
   (interactive)
   (let*
       ((date (string-to-number (replace-regexp-in-string "-" "" (org-read-date nil nil nil "Enter desired date"))))
-       (category (completing-read "Select catagory: "
-				  arxiv-catagories nil t nil nil arxiv-default-catagory)))
+       (category (completing-read "Select category: "
+				  arxiv-categories nil t nil nil arxiv-default-category)))
     (setq arxiv-entry-list (arxiv-query category (int-to-string date) (int-to-string (+ 1 date))))
     (arxiv-populate-page 0 arxiv-entries-per-page)))
 
@@ -231,8 +239,8 @@ You can change the default folder by customizing the variable arxiv-default-down
   (let*
       ((date (string-to-number (format-time-string "%Y%m%d")))
        (day (string-to-number (format-time-string "%u")))
-       (category (completing-read "Select catagory: "
-				  arxiv-catagories nil t nil nil arxiv-default-catagory)))       
+       (category (completing-read "Select category: "
+				  arxiv-categories nil t nil nil arxiv-default-category)))       
     (cond ((eq day 7) (setq date (- date 2)))
 	  ((eq day 1) (setq date (- date 3)))
 	  (t (setq date (- date 1))))
@@ -245,8 +253,8 @@ You can change the default folder by customizing the variable arxiv-default-down
   (let*
       ((date-end (string-to-number (format-time-string "%Y%m%d")))
        (date-start (- date-end 7))
-       (category (completing-read "Select catagory: "
-				  arxiv-catagories nil t nil nil arxiv-default-catagory)))       
+       (category (completing-read "Select category: "
+				  arxiv-categories nil t nil nil arxiv-default-category)))       
     (setq arxiv-entry-list (arxiv-query category (int-to-string date-start) (int-to-string date-end)))
     (arxiv-populate-page 0 arxiv-entries-per-page)))
 
@@ -255,10 +263,91 @@ You can change the default folder by customizing the variable arxiv-default-down
   (interactive)
   (let*
       ((author (read-string "Authors name (use space to seperate): "))
-       (category (completing-read "Select catagory: "
-				  arxiv-catagories nil t nil nil arxiv-default-catagory)))
+       (category (completing-read "Select category: "
+				  arxiv-categories nil t nil nil arxiv-default-category)))
   (setq arxiv-entry-list (arxiv-query-author author category))
   (arxiv-populate-page 0 arxiv-entries-per-page)))
+
+(defun arxiv-complex-search ()
+  "Do a complex search on arXiv database and list the result in buffer."
+  (interactive)
+  (setq arxiv-query-data-list nil)
+  (arxiv-search-menu/body))
+
+(defun arxiv-query-data-update (field condition)
+  "Ask and update the variable arxiv-query-data-list in the corresponding search field.
+Do exclusive update if condition is nil."
+  (if (or condition arxiv-query-data-list)
+      (let ((context))
+	(cond
+	 ((eq field 'all) (setq context (read-string "Search all fields (use space to seperate and \"\" to quote): ")))
+	 ((eq field 'id) (setq context (read-string "Article ID: ")))
+	 ((eq field 'author) (setq context (read-string "Authors name (use space to seperate): ")))
+	 ((eq field 'abstract) (setq context (read-string "Abstract keywords (use space to seperate and \"\" to quote): ")))
+	 ((eq field 'category) (setq context (completing-read "Category: "
+							      arxiv-categories nil t nil nil arxiv-default-category)))
+	 ((eq field 'journal) (setq context (read-string "Journal: ")))
+	 ((eq field 'comment) (setq context (read-string "Search comments (use space to seperate and \"\" to quote): ")))
+	 ((eq field 'time) (let
+			       ((date-min (string-to-number (replace-regexp-in-string "-" "" (org-read-date nil nil nil "Enter starting date"))))
+				(date-max (string-to-number (replace-regexp-in-string "-" "" (org-read-date nil nil nil "Enter ending date")))))
+			     (setq context (format "[%d0000+TO+%d0000]" date-min date-max)))))
+	(setq arxiv-query-data-list (cons (list field condition context) arxiv-query-data-list)))
+    (message "Only inclusive searching is allowed as the first keyword."))
+  (arxiv-search-menu/body))
+
+(defun arxiv-hydra-quit-function ()
+  "helper function for arxiv-search-menu()."
+  (interactive)
+  (if arxiv-query-data-list
+      (progn
+	(setq arxiv-query-data-list (nreverse arxiv-query-data-list))
+	(setq arxiv-entry-list (arxiv-query-general))
+	(arxiv-populate-page 0 arxiv-entries-per-page))
+    (message "quit without search conditions")))
+
+
+(defhydra arxiv-search-menu (:color blue :foreign-keys warn :exit t)
+  "
+Add arXiv search condition:
+_a_: all                   _i_: article ID            _t_: submitted time
+_u_: author(s)             _b_: abstract              _c_: category
+_j_: journal               _m_: comment               _-_: exclude condition 
+_p_: perform search with current condition(s)       _q_: quit
+"
+  ("a" (arxiv-query-data-update 'all t))
+  ("i" (arxiv-query-data-update 'id t))
+  ("t" (arxiv-query-data-update 'time t))
+  ("u" (arxiv-query-data-update 'author t))
+  ("b" (arxiv-query-data-update 'abstract t))
+  ("c" (arxiv-query-data-update 'category t))
+  ("j" (arxiv-query-data-update 'journal t))
+  ("m" (arxiv-query-data-update 'comment t))  
+  ("-" arxiv-search-menu-ex/body)
+  ("p" arxiv-hydra-quit-function)
+  ("q" (setq arxiv-query-data-list nil) "quit")
+  )
+ 
+(defhydra arxiv-search-menu-ex (:color red :foreign-keys warn :exit t)
+  "
+Exclude arXiv search condition:
+_a_: all                   _i_: article ID            _t_: submitted time
+_u_: author(s)             _b_: abstract              _c_: category
+_j_: journal               _m_: comment               _+_: include condition 
+_p_: perform search with current condition(s)       _q_: quit
+"
+  ("a" (arxiv-query-data-update 'all nil))
+  ("i" (arxiv-query-data-update 'id nil))
+  ("t" (arxiv-query-data-update 'time nil))
+  ("u" (arxiv-query-data-update 'author nil))
+  ("b" (arxiv-query-data-update 'abstract nil))
+  ("c" (arxiv-query-data-update 'category nil))
+  ("j" (arxiv-query-data-update 'journal nil))
+  ("m" (arxiv-query-data-update 'comment nil))  
+  ("+" arxiv-search-menu/body)
+  ("p" arxiv-hydra-quit-function)
+  ("q" (setq arxiv-query-data-list nil) "quit")
+  )
 
 (provide 'arxiv-mode)
 
