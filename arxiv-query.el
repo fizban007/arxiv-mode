@@ -92,7 +92,7 @@ Return a alist with various fields."
   (setq root (car (xml-parse-region)))
   (setq arxiv-query-total-results (string-to-number (arxiv-getxml-context root 'opensearch:totalResults)))
   (setq arxiv-query-results-min (+ 1 (string-to-number (arxiv-getxml-context root 'opensearch:startIndex))))
-  (setq arxiv-query-results-max (+ arxiv-query-total-results -1 (string-to-number (arxiv-getxml-context root 'opensearch:itemsPerPage))))
+  (setq arxiv-query-results-max (+ arxiv-query-results-min -1 (string-to-number (arxiv-getxml-context root 'opensearch:itemsPerPage))))
   (when (< arxiv-query-total-results arxiv-query-results-max) (setq arxiv-query-results-max arxiv-query-total-results))
   (setq entries (xml-get-children root 'entry))
   (mapcar 
@@ -142,8 +142,7 @@ Return a alist with various fields."
 
 (defun arxiv-query-general ()
   "Do a complex search on arXiv for articles according to the list arxiv-query-data-list."
-  (setq arxiv-api-url (arxiv-get-api-url))
-  (arxiv-parse-api arxiv-api-url))
+  (arxiv-parse-api (arxiv-get-api-url)))
 
 (provide 'arxiv-query)
 ;;; arxiv-query.el ends here

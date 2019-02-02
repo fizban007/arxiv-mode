@@ -20,6 +20,7 @@ Use `M-x arxiv-read-author` to search for specific author(s).
 
 For complex searches, use `M-x arxiv-complex-search`.
 This command allows user to dynamically refine and modify search conditions.
+You can also use `r` to refine search condition in the abstract list obtained from a complex search.
 
 In the article list, use `n` and `p` to navigate the article list.
 Press `SPC` to toggle visibility of the abstract window. Press
