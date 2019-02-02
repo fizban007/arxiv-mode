@@ -11,10 +11,7 @@ I'm still working to improve the source code, so changes will happen frequently.
 Common Usage
 ============
 
-To start reading abstracts, run `M-x arxiv-read`, and enter the date
-and category you would like to read.
-
-You can also use `M-x arxiv-read-new` and `M-x arxiv-read-recent`
+To start reading abstracts, run `M-x arxiv-read-new` and `M-x arxiv-read-recent`
 to browse new and recent submissions in the given category.
 Use `M-x arxiv-read-author` to search for specific author(s).
 
