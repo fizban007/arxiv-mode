@@ -86,7 +86,6 @@
 (defun arxiv-open-current-url ()
   "Open the webpage for the current highlighted paper entry."
   (interactive)
-  ;; (message "%S" (nth arxiv-current-entry arxiv-entry-list))
   (setq url (cdr (assoc 'url (nth arxiv-current-entry arxiv-entry-list))))
   ;; (start-process "arxiv-webpage" nil arxiv-default-browser url)
   (browse-url url))
@@ -231,21 +230,41 @@ You can change the default folder by customizing the variable arxiv-default-down
   "read new (submitted in the previous work day) arXiv articles in a given category."
   (interactive)
   (let*
-      ((date-start (format-time-string "%Y%m%d" (org-read-date nil t "-1")))
+      ((day (string-to-number (format-time-string "%u" nil "EST")))
+       (announced nil)
+       (date-start nil)
        (date-end nil)
-       (day (format-time-string "%U" (org-read-date nil t "-1")))
+       (dayname-start "")
+       (dayname-end "")
        (category (completing-read "Select category: "
 				  arxiv-categories nil t nil nil arxiv-default-category)))
-    (cond
-     ((equal day "Saturday") (progn
-		   (setq date-start (format-time-string "%Y%m%d" (org-read-date nil t "-2")))
-		   (setq date-end (format-time-string "%Y%m%d" (org-read-date nil t "-1")))))
-     ((equal day "Sunday") (progn
-		   (setq date-start (format-time-string "%Y%m%d" (org-read-date nil t "-3")))
-		   (setq date-end (format-time-string "%Y%m%d" (org-read-date nil t "-2")))))
-     (t (setq date-end (format-time-string "%Y%m%d" (org-read-date nil t "")))))
+    ;; arxiv announces new submssions on 20:00 EST. Check it's 20:00 yet.
+    (when (< (string-to-number (format-time-string "%H" nil "EST")) 20)
+      (setq day (- day 1))
+      (setq announced t))
+    ;; no announcements on Friday and Saturday.
+    (if (or (equal day 5) (equal day 6))
+	(progn
+	  (setq date-start (format-time-string "%Y%m%d" (org-read-date t t "-Wed")))
+	  (setq date-end (format-time-string "%Y%m%d" (org-read-date t t "-Thu")))
+	  (setq dayname-start "Wed")
+	  (setq dayname-end "Thu"))
+      (if announced
+	  (progn	    
+	    (setq date-start (format-time-string "%Y%m%d" (org-read-date t t "-1") "EST"))
+	    (setq date-end (format-time-string "%Y%m%d" (org-read-date t t "")) "EST")
+	    (setq day-start (format-time-string "%a" (org-read-date t t "-1") "EST"))
+	    (setq day-end (format-time-string "%a" (org-read-date t t "") "EST")))
+	(setq date-start (format-time-string "%Y%m%d" (org-read-date t t "-2") "EST"))
+	(setq date-end (format-time-string "%Y%m%d" (org-read-date t t "-1")) "EST")
+	(setq day-start (format-time-string "%a" (org-read-date t t "-2") "EST"))
+	(setq day-end (format-time-string "%a" (org-read-date t t "-1") "EST"))))
+    ;; day to week name
+    (setq arxiv-query-info (format " Showing new submissions in %s from %s(%s) to %s(%s) (EST)."
+				   category date-start dayname-start date-end dayname-end))
+    (setq date-start (concat date-start "1400"))
+    (setq date-end (concat date-end "1400"))
     (setq arxiv-entry-list (arxiv-query category date-start date-end))
-    (setq arxiv-query-info (format " Showing new submissions in %s from %s to %s." category date-start date-end))
     (setq arxiv-mode-entry-function 'arxiv-read-new)
     (arxiv-populate-page 0 arxiv-entries-per-page)))
 
@@ -253,12 +272,14 @@ You can change the default folder by customizing the variable arxiv-default-down
   "read recent (past week) submissions of arXiv in a given category."
   (interactive)
   (let*
-      ((date-start (format-time-string "%Y%m%d" (org-read-date nil t "-8")))
-       (date-end (format-time-string "%Y%m%d" (org-read-date nil t "-1")))
+      ((date-start (format-time-string "%Y%m%d" (org-read-date nil t "-7")))
+       (date-end (format-time-string "%Y%m%d" (org-read-date nil t "")))
        (category (completing-read "Select category: "
 				  arxiv-categories nil t nil nil arxiv-default-category)))
-    (setq arxiv-entry-list (arxiv-query category date-start date-end))
     (setq arxiv-query-info (format " Showing recent submissions in %s in the past week (%s to %s)." category date-start date-end))
+    (setq date-start (concat date-start "0000"))
+    (setq date-end (concat date-end "0000"))
+    (setq arxiv-entry-list (arxiv-query category date-start date-end))
     (setq arxiv-mode-entry-function 'arxiv-read-recent)
     (arxiv-populate-page 0 arxiv-entries-per-page)))
 

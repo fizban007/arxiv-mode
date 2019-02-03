@@ -61,7 +61,7 @@ When using this function, make sure that the first item of the list has t condit
     (setq start 0))  ; Start with the first result
   (unless max-num
     (setq max-num arxiv-entries-per-page))
-  (format "%s?search_query=submittedDate:[%s0000+TO+%s0000]+AND+cat:%s*&sortBy=submittedDate&sortOrder=descending&start=%d&max_results=%d" 
+  (format "%s?search_query=submittedDate:[%s+TO+%s]+AND+cat:%s*&sortBy=submittedDate&sortOrder=descending&start=%d&max_results=%d" 
           arxiv-url dateStart dateEnd category start max-num))
 
 (defun arxiv-geturl-author (author &optional category start max-num)

@@ -216,11 +216,6 @@ context is a string seperated by quotes and spaces.")
   :group 'arxiv-preferences
   :type 'integer)
 
-(defcustom arxiv-default-browser "firefox"
-  "Default browser for opening the arXiv url."
-  :group 'arxiv-preferences
-  :type 'string)
-
 (defcustom arxiv-default-category "hep-th"
   "Default search category when using arxiv-read."
   :group 'arxiv-preferences
