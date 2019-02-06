@@ -222,11 +222,20 @@ context is a string seperated by quotes and spaces.")
   :type 'string
   :options arxiv-categories)
 
-(defcustom arxiv-default-download-folder "~/Downloads"
+(defcustom arxiv-default-download-folder "~/Downloads/"
   "Default download folder to save PDF file."
   :group 'arxiv-preferences
   :type 'string)
 
+(defcustom arxiv-default-bibliography ""
+  "Default master bibliography file to append for arXiv mode."
+  :group 'arxiv-preferences
+  :type 'string)
+
+(defcustom arxiv-pdf-open-function (lambda (fpath) (call-process "open" nil 0 nil "-a" "/Applications/Preview.app" fpath))
+  "Default function to open PDF file."
+  :group 'arxiv-preferences
+  :type 'function)
 
 ;; Defining custom faces
 (defvar arxiv-title-face 'arxiv-title-face)

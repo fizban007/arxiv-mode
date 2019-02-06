@@ -100,6 +100,8 @@ Return a alist with various fields."
      (progn
        (setq my-pdf (arxiv-extract-pdf (xml-get-children paper 'link)))
        (setq my-url (arxiv-getxml-context paper 'id))
+       (string-match "^http://arxiv\\.org/abs/\\(.+\\)$" my-url)
+       (setq my-id (match-string 1 my-url))
        (setq my-title (arxiv-getxml-context paper 'title))
        (setq my-title (replace-regexp-in-string "[ \n]+" " " my-title))
        (setq my-abstract (arxiv-getxml-context paper 'summary))
@@ -119,6 +121,7 @@ Return a alist with various fields."
 			   (authors . ,my-names)
 			   (abstract . ,my-abstract)
 			   (url . ,my-url)
+			   (id . ,my-id)
 			   (date . ,my-publishdate)
 			   (updated . ,my-updatedate)
 			   (doi . ,my-doi)
@@ -128,7 +131,7 @@ Return a alist with various fields."
 			   (pdf . ,my-pdf)))
        (setq my-list (append my-list `(,alist-entry)))
        )) entries)
-  my-list)
+  my-list) 
 
 (defun arxiv-query (cat date-start date-end &optional max-num)
   "Query arXiv for articles in a given category submitted between date-start and date-end."

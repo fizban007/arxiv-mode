@@ -90,19 +90,26 @@
   ;; (start-process "arxiv-webpage" nil arxiv-default-browser url)
   (browse-url url))
 
-(defun arxiv-download-pdf ()
+(defun arxiv-download-pdf (&optional confirm)
   "Download and save the highlighted paper to desired folder.
-You can change the default folder by customizing the variable arxiv-default-download-folder."
+Return the path of the saved pdf file.
+You can change the default folder by customizing the variable arxiv-default-download-folder.
+If the optional argument is t, don't prompt the user with opening file."
   (interactive)
   (let ((url (cdr (assoc 'pdf (nth arxiv-current-entry arxiv-entry-list))))
-	(newfile nil))
-    (string-match "/[^/]+?$" url)
-    (setq newfile (concat (match-string 0 url) ".pdf"))
+	(newfile) (pdfname) (input))
+    (string-match "/\\([^/]+?\\)$" url)
+    (setq pdfname (concat (match-string 1 url) ".pdf"))
     (setq newfile (read-file-name "save pdf as: "
 				  (expand-file-name arxiv-default-download-folder)
-				  (concat arxiv-default-download-folder newfile)
-				  nil newfile))
-    (url-copy-file url newfile)))
+				  pdfname nil pdfname))
+    (if (directory-name-p newfile) (setq newfile (concat newfile pdfname)))
+    (url-copy-file url newfile 1)
+    (unless confirm
+      (setq input (read-char-exclusive (format "%s saved. Open pdf? (y/N) " newfile)))
+      (when (or (equal input ?y) (equal input ?Y))
+	(funcall arxiv-pdf-open-function newfile)))
+    newfile))
 
 (defun arxiv-customize ()
   "Customize the arxiv-mode"
@@ -122,6 +129,7 @@ You can change the default folder by customizing the variable arxiv-default-down
     (arxiv-format-abstract-page (nth arxiv-current-entry arxiv-entry-list))
     (setq-local prettify-symbols-alist arxiv-abstract-prettify-symbols-alist)
     (prettify-symbols-mode 1)
+    (when tabbar-mode (tabbar-local-mode 1))
     (setq buffer-read-only t))
   (setq arxiv-abstract-window (get-buffer-window abstract-buffer)))
   
@@ -152,8 +160,11 @@ You can change the default folder by customizing the variable arxiv-default-down
 (define-key arxiv-mode-map (kbd "RET") 'arxiv-open-current-url)
 (define-key arxiv-mode-map (kbd "SPC") 'arxiv-show-hide-abstract)
 (define-key arxiv-mode-map "d" 'arxiv-download-pdf)
+(define-key arxiv-mode-map "e" 'arxiv-download-pdf-export-bibtex)
+(define-key arxiv-mode-map "b" 'arxiv-export-bibtex-entry)
 (define-key arxiv-mode-map "r" 'arxiv-refine-search)
 (define-key arxiv-mode-map "q" 'arxiv-exit)
+(define-key arxiv-mode-map (kbd "?") 'arxiv-help-menu/body)
 
 (setq arxiv-keyword-list-default
       '(("Title:\\(.*?\\)$" . (1 arxiv-title-face))
@@ -226,12 +237,78 @@ You can change the default folder by customizing the variable arxiv-default-down
 	(switch-to-buffer arxiv-buffer))
     (message "No articles at this time.")))
 
+(defun arxiv-export-bibtex (&optional pdfpath)
+  "Add a new bibtex item to a .bib file according to the current arxiv entry.
+This function is a part of arXiv mode.
+You can customize the default .bib file by customizing the arxiv-default-bibliography variable.
+This function is not related to the arxiv-add-bibtex-entry in org-ref package."
+  (interactive)
+  (let*
+      ((entry (nth arxiv-current-entry arxiv-entry-list))
+       (title (cdr (assoc 'title entry)))
+       (id (cdr (assoc 'id entry)))
+       (author-list (cdr (assoc 'authors entry)))
+       (abstract (cdr (assoc 'abstract entry)))
+       (year (cdr (assoc 'date entry)))
+       (url (cdr (assoc 'url entry)))
+       (journal (cdr (assoc 'journal entry)))
+       (doi (cdr (assoc 'doi entry)))
+       (authors nil) (key nil) (bibtex-info nil) (bibfile nil))
+    (setq author-list (mapcar (lambda (name) (progn
+			(string-match "\\(.+\\) \\([^ ]+?\\)$" name)
+			(setq name (concat (match-string 2 name) ", " (match-string 1 name)))))
+			       author-list))
+    (string-match "^[0-9]+" year)
+    (setq year (match-string 0 year))
+    (setq authors (string-join author-list " and "))
+    (setq abstract (replace-regexp-in-string "^ +" "" abstract))
+    (setq abstract (replace-regexp-in-string " +$" "" abstract))
+    (setq bibtex-info (format "@article{,
+title = {%s},
+author = {%s},
+year = {%s}
+}" title authors year))
+    (with-temp-buffer
+      (insert bibtex-info)
+      (bibtex-mode)
+      (setq key (bibtex-generate-autokey)))
+    (string-match "^@article{,\n\\(.+\\)" bibtex-info)
+    (setq bibtex-info (format "@article{%s,
+title = {%s},
+author = {%s},
+abstract = {%s},
+archivePrefix = {arXiv},
+eprint = {%s},
+url = {%s},
+year = {%s}" key title authors abstract id url year))
+    (when doi
+      (setq bibtex-info (concat bibtex-info (format ",\ndoi = {%s}" doi))))
+    (when journal
+      (setq bibtex-info (concat bibtex-info (format ",\njournal = {%s}" journal))))
+    (when pdfpath
+      (setq bibtex-info (concat bibtex-info (format ",\nfile = {:%s:pdf}" (expand-file-name pdfpath)))))
+    (setq bibtex-info (concat bibtex-info "\n}"))
+    (setq bibfile (read-file-name "export to bibliography file: " nil nil t (expand-file-name arxiv-default-bibliography)))
+    (save-window-excursion
+      (find-file bibfile)
+      (goto-char (point-max))
+      (when (not (looking-at "^")) (insert "\n"))
+      (insert bibtex-info)
+      (goto-char (point-max))
+      (when (not (looking-at "^")) (insert "\n"))
+      (save-buffer))))
+
+(defun arxiv-download-pdf-export-bibtex ()
+  "Download the pdf file of the current entry and export a bibtex entry to the selected bibtex file."
+  (interactive)
+  (arxiv-export-bibtex (arxiv-download-pdf t)))
+
 (defun arxiv-read-new ()
   "read new (submitted in the previous work day) arXiv articles in a given category."
   (interactive)
   (let*
       ((day (string-to-number (format-time-string "%u" nil "EST")))
-       (announced nil)
+;       (announced nil)
        (date-start nil)
        (date-end nil)
        (dayname-start "")
@@ -239,26 +316,41 @@ You can change the default folder by customizing the variable arxiv-default-down
        (category (completing-read "Select category: "
 				  arxiv-categories nil t nil nil arxiv-default-category)))
     ;; arxiv announces new submssions on 20:00 EST. Check it's 20:00 yet.
-    (when (< (string-to-number (format-time-string "%H" nil "EST")) 20)
-      (setq day (- day 1))
-      (setq announced t))
-    ;; no announcements on Friday and Saturday.
-    (if (or (equal day 5) (equal day 6))
-	(progn
-	  (setq date-start (format-time-string "%Y%m%d" (org-read-date t t "-Wed")))
-	  (setq date-end (format-time-string "%Y%m%d" (org-read-date t t "-Thu")))
-	  (setq dayname-start "Wed")
-	  (setq dayname-end "Thu"))
-      (if announced
-	  (progn	    
-	    (setq date-start (format-time-string "%Y%m%d" (org-read-date t t "-1") "EST"))
-	    (setq date-end (format-time-string "%Y%m%d" (org-read-date t t "")) "EST")
-	    (setq day-start (format-time-string "%a" (org-read-date t t "-1") "EST"))
-	    (setq day-end (format-time-string "%a" (org-read-date t t "") "EST")))
-	(setq date-start (format-time-string "%Y%m%d" (org-read-date t t "-2") "EST"))
-	(setq date-end (format-time-string "%Y%m%d" (org-read-date t t "-1")) "EST")
-	(setq day-start (format-time-string "%a" (org-read-date t t "-2") "EST"))
-	(setq day-end (format-time-string "%a" (org-read-date t t "-1") "EST"))))
+    ;; Edit: Seems that the API database is only updated after midnight. No need to be so critical.
+    ;; (when (< (string-to-number (format-time-string "%H" nil "EST")) 20)
+    ;;   (setq day (- day 1))
+    ;;   (setq announced t))
+    (cond
+     ((or (equal day 5) (equal day 6) (equal day 7))
+      (progn
+	(setq date-start (format-time-string "%Y%m%d" (org-read-date t t "-Wed")))
+	(setq date-end (format-time-string "%Y%m%d" (org-read-date t t "-Thu")))
+	(setq dayname-start "Wed")
+	(setq dayname-end "Thu")))
+     ((equal day 1)
+      (progn
+	(setq date-start (format-time-string "%Y%m%d" (org-read-date t t "-Thu")))
+	(setq date-end (format-time-string "%Y%m%d" (org-read-date t t "-Fri")))
+	(setq dayname-start "Thu")
+	(setq dayname-end "Fri")))
+     ((equal day 2)
+      (progn
+	(setq date-start (format-time-string "%Y%m%d" (org-read-date t t "-Fri")))
+	(setq date-end (format-time-string "%Y%m%d" (org-read-date t t "-Mon")))
+	(setq dayname-start "Fri")
+	(setq dayname-end "Mon")))
+     ((equal day 3)
+      (progn
+	(setq date-start (format-time-string "%Y%m%d" (org-read-date t t "-Mon")))
+	(setq date-end (format-time-string "%Y%m%d" (org-read-date t t "-Tue")))
+	(setq dayname-start "Mon")
+	(setq dayname-end "Tue")))
+     ((equal day 4)
+      (progn
+	(setq date-start (format-time-string "%Y%m%d" (org-read-date t t "-Tue")))
+	(setq date-end (format-time-string "%Y%m%d" (org-read-date t t "-Wed")))
+	(setq dayname-start "Tue")
+	(setq dayname-end "Wed"))))
     ;; day to week name
     (setq arxiv-query-info (format " Showing new submissions in %s from %s(%s) to %s(%s) (EST)."
 				   category date-start dayname-start date-end dayname-end))
@@ -374,10 +466,11 @@ Do exclusive update if condition is nil. Also updates arxiv-query-info."
     (message "quit with blank search conditions")))
 
 
-(defhydra arxiv-search-menu (:color blue :foreign-keys run :exit t)
+(defhydra arxiv-search-menu (:color blue :foreign-keys warn :exit t)
   "
 Condition: %`arxiv-query-info
 Add search condition:
+-------------------------------------------------------------------------------
 _a_: all                   _i_: article ID            _t_: submitted time
 _u_: author(s)             _b_: abstract              _c_: category
 _j_: journal               _m_: comment               _-_: exclude condition 
@@ -396,10 +489,11 @@ _x_: perform search with current condition(s)       _q_: quit
   ("q" (setq arxiv-query-data-list nil) "quit")
   )
  
-(defhydra arxiv-search-menu-ex (:color red :foreign-keys run :exit t)
+(defhydra arxiv-search-menu-ex (:color red :foreign-keys warn :exit t)
   "
 Condition: %`arxiv-query-info
 Exclude arXiv search condition:
+-------------------------------------------------------------------------------
 _a_: all                   _i_: article ID            _t_: submitted time
 _u_: author(s)             _b_: abstract              _c_: category
 _j_: journal               _m_: comment               _+_: include condition 
@@ -416,6 +510,27 @@ _x_: perform search with current condition(s)       _q_: quit
   ("+" arxiv-search-menu/body)
   ("x" arxiv-hydra-perform-search)
   ("q" (setq arxiv-query-data-list nil) "quit")
+  )
+
+(defhydra arxiv-help-menu (:color blue :forien-keys run)
+  "
+ArXiv mode help message
+---------------------------------------------------------------------------------------------------------
+_n_: next entry           _SPC_: toggle abstract window          _b_: export bibtex entry
+_p_: previous entry       _RET_: open link in browser            _e_: download pdf & export bibtex entry
+_r_: refine search          _d_: download PDF                    _?_: toggle this help
+_q_: quit Arxiv mode        
+"
+  ("n" arxiv-next-entry)
+  ("p" arxiv-prev-entry)
+  ("r" arxiv-refine-search :exit t)
+  ("q" arxiv-exit :exit t)
+  ("SPC" arxiv-show-hide-abstract)
+  ("RET" arxiv-open-current-url)
+  ("d" arxiv-download-pdf)
+  ("?" nil)
+  ("b" arxiv-export-bibtex)
+  ("e" arxiv-download-pdf-export-bibtex)
   )
 
 (provide 'arxiv-mode)

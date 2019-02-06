@@ -22,7 +22,12 @@ You can also use `r` to refine search condition in the abstract list obtained fr
 In the article list, use `n` and `p` to navigate the article list.
 Press `SPC` to toggle visibility of the abstract window. Press
 `RET` to open the entry in a web browser. Press `d` to download the pdf.
-Press `q` to exit the mode.
+
+arXiv mode now has the ability to export bibtex entry.
+Simply press `b` or in the article list to export the bibtex entry of current paper to your specified .bib file.
+Press `e` to download pdf and add a bibtex entry with a link to the actual pdf file.
+
+All available commands are listed in a hydra help menu accessable by `?` whenever you are in the article list.
 
 Installation
 ============
