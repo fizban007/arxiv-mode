@@ -198,7 +198,7 @@ If the optional argument is t, don't prompt the user with opening file."
 	 (info-width (- (window-total-width) (length entry) 2)))
     (list
      (list (- info-width)
-	   (if (eq arxiv-mode-entry-function 'arxiv-complex-search)
+	   (if (or (eq arxiv-mode-entry-function 'arxiv-complex-search) (eq arxiv-mode-entry-function 'arxiv-search))
 	       (concat " search results for " arxiv-query-info)	     
 	     arxiv-query-info)
      (propertize " " 'display `(space :align-to ,info-width))
@@ -387,6 +387,18 @@ year = {%s}" key title authors abstract id url year))
     (setq arxiv-mode-entry-function 'arxiv-read-author)
     (arxiv-populate-page 0 arxiv-entries-per-page)))
 
+(defun arxiv-search ()
+  "Do a simple search on arXiv datebase and list the result in buffer."
+  (interactive)
+  (let ((condition (read-string "Search all fields (use space to seperate and \"\" to quote): ")))
+    (if (string-match "^ *$" condition)
+	(message "exit with blank search condition.")
+      (setq arxiv-query-data-list `((all t ,condition)))
+      (setq arxiv-query-info (format "all:%s" condition))
+      (setq arxiv-entry-list (arxiv-query-general))
+      (setq arxiv-mode-entry-function 'arxiv-search)
+      (arxiv-populate-page 0 arxiv-entries-per-page))))
+
 (defun arxiv-complex-search ()
   "Do a complex search on arXiv database and list the result in buffer."
   (interactive)
@@ -397,11 +409,11 @@ year = {%s}" key title authors abstract id url year))
 (defun arxiv-refine-search ()
   "Refine search conditions in the *arXiv-update* buffer."
   (interactive)
-  (if (eq arxiv-mode-entry-function 'arxiv-complex-search)
+  (if (or (eq arxiv-mode-entry-function 'arxiv-complex-search) (eq arxiv-mode-entry-function 'arxiv-search))
       (progn
 	(message "refine search condition: ")
 	(arxiv-search-menu/body))
-    (message "Refining search function is only available in M-x arxiv-complex-search.")))
+    (message "Refining search is only available in arxiv-search or arxiv-complex-search.")))
 
 (defun arxiv-query-data-update (field condition)
   "Ask and update the variable arxiv-query-data-list in the corresponding search field.
