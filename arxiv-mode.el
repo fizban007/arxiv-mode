@@ -307,8 +307,8 @@ year = {%s}" key title authors abstract id url year))
   "read new (submitted in the previous work day) arXiv articles in a given category."
   (interactive)
   (let*
-      ((day (string-to-number (format-time-string "%u" nil "EST")))
-;       (announced nil)
+      ((time (current-time))
+       (day (string-to-number (format-time-string "%u" time "EST")))       
        (date-start nil)
        (date-end nil)
        (dayname-start "")
@@ -316,41 +316,41 @@ year = {%s}" key title authors abstract id url year))
        (category (completing-read "Select category: "
 				  arxiv-categories nil t nil nil arxiv-default-category)))
     ;; arxiv announces new submssions on 20:00 EST. Check it's 20:00 yet.
-    ;; Edit: Seems that the API database is only updated after midnight. No need to be so critical.
-    ;; (when (< (string-to-number (format-time-string "%H" nil "EST")) 20)
-    ;;   (setq day (- day 1))
-    ;;   (setq announced t))
+    (when (< (string-to-number (format-time-string "%H" time "EST")) 20)
+      (setq day (- day 1))
+      (setq time (time-subtract time 86400)))
+    
     (cond
-     ((or (equal day 5) (equal day 6) (equal day 7))
+     ((equal day 5) ; Friday
       (progn
-	(setq date-start (format-time-string "%Y%m%d" (org-read-date t t "-Wed")))
-	(setq date-end (format-time-string "%Y%m%d" (org-read-date t t "-Thu")))
+	(setq date-start (format-time-string "%Y%m%d" (time-subtract time (* 2 86400)) "EST"))
+	(setq date-end (format-time-string "%Y%m%d" (time-subtract time 86400) "EST"))
 	(setq dayname-start "Wed")
 	(setq dayname-end "Thu")))
-     ((equal day 1)
+     ((equal day 6) ; Saturday
       (progn
-	(setq date-start (format-time-string "%Y%m%d" (org-read-date t t "-Thu")))
-	(setq date-end (format-time-string "%Y%m%d" (org-read-date t t "-Fri")))
+	(setq date-start (format-time-string "%Y%m%d" (time-subtract time (* 3 86400)) "EST"))
+	(setq date-end (format-time-string "%Y%m%d" (time-subtract time (* 2 86400)) "EST"))
+	(setq dayname-start "Wed")
+	(setq dayname-end "Thu")))
+     ((or (equal day 7) (eq day 0)) ; Sunday
+      (progn
+	(setq date-start (format-time-string "%Y%m%d" (time-subtract time (* 3 86400)) "EST"))
+	(setq date-end (format-time-string "%Y%m%d" (time-subtract time (* 2 86400)) "EST"))
 	(setq dayname-start "Thu")
 	(setq dayname-end "Fri")))
-     ((equal day 2)
+     ((equal day 1) ; Monday
       (progn
-	(setq date-start (format-time-string "%Y%m%d" (org-read-date t t "-Fri")))
-	(setq date-end (format-time-string "%Y%m%d" (org-read-date t t "-Mon")))
+	(setq date-start (format-time-string "%Y%m%d" (time-subtract time (* 3 86400)) "EST"))
+	(setq date-end (format-time-string "%Y%m%d" time "EST"))
 	(setq dayname-start "Fri")
 	(setq dayname-end "Mon")))
-     ((equal day 3)
+     (t ; Tue - Thu, read from previous day
       (progn
-	(setq date-start (format-time-string "%Y%m%d" (org-read-date t t "-Mon")))
-	(setq date-end (format-time-string "%Y%m%d" (org-read-date t t "-Tue")))
-	(setq dayname-start "Mon")
-	(setq dayname-end "Tue")))
-     ((equal day 4)
-      (progn
-	(setq date-start (format-time-string "%Y%m%d" (org-read-date t t "-Tue")))
-	(setq date-end (format-time-string "%Y%m%d" (org-read-date t t "-Wed")))
-	(setq dayname-start "Tue")
-	(setq dayname-end "Wed"))))
+	(setq date-start (format-time-string "%Y%m%d" (time-subtract time 86400) "EST"))
+	(setq date-end (format-time-string "%Y%m%d" time "EST"))
+	(setq dayname-start (format-time-string "%a" (time-subtract time 86400) "EST"))
+	(setq dayname-end (format-time-string "%a" time "EST")))))
     ;; day to week name
     (setq arxiv-query-info (format " Showing new submissions in %s from %s(%s) to %s(%s) (EST)."
 				   category date-start dayname-start date-end dayname-end))
@@ -512,7 +512,7 @@ _x_: perform search with current condition(s)       _q_: quit
   ("q" (setq arxiv-query-data-list nil) "quit")
   )
 
-(defhydra arxiv-help-menu (:color blue :forien-keys run)
+(defhydra arxiv-help-menu (:color blue :foriegn-keys run)
   "
 ArXiv mode help message
 ---------------------------------------------------------------------------------------------------------
