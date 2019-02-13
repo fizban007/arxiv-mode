@@ -21,65 +21,31 @@
 ;; Current window for viewing the arXiv abstract
 (setq arxiv-abstract-window nil)
 
-;; Overlays for highlighting selections
-;; TODO: Might need to weed some unused overlays
-(aset arxiv-highlight-overlays 0 (make-overlay 1 1))
-(overlay-put (aref arxiv-highlight-overlays 0)
-             'face 'highlight)
-
-(aset arxiv-highlight-overlays 1 (make-overlay 1 1))
-(overlay-put (aref arxiv-highlight-overlays 1)
-             'face 'font-lock-keyword-face)
-
-(aset arxiv-highlight-overlays 2 (make-overlay 1 1))
-(overlay-put (aref arxiv-highlight-overlays 2)
-             'face 'font-lock-keyword-face)
-
-(defun arxiv-remove-highlight (index)
-  "Remove highlighting an entry"
-  (delete-overlay (aref arxiv-highlight-overlays index)))
-
-(defun arxiv-highlight-entry (index begin &optional buffer)
-  "Highlight an entry with overlay INDEX"
-  (setq end (re-search-forward "^\n"))
-  (move-overlay (aref arxiv-highlight-overlays index)
-                begin end (or buffer (current-buffer)))
-  (re-search-backward "^Title:"))
-
 (defun arxiv-next-entry (&optional arg)
   "Move to the next arXiv entry"
   (interactive "P")
-  (unless arg
-    (setq arg 1))
-  (while (and (> arg 0)
-              (< arxiv-current-entry (+ (safe-length arxiv-entry-list) -1)))
-    (progn
-      ;; (setq arxiv-current-entry (+ arxiv-current-entry 1))
-      (setq arg (+ arg -1))
-      (arxiv-remove-highlight 0)
-      (or (eobp) (forward-char 1))
-      (re-search-forward "^Title:" nil t nil)
-      (beginning-of-line 1)
-      (arxiv-highlight-entry 0 (point))))
-  (setq arxiv-current-entry (/ (line-number-at-pos (point)) 4))
+  (setq arxiv-current-entry (+ arxiv-current-entry (prefix-numeric-value arg)))
+  (when (> arxiv-current-entry (- (safe-length arxiv-entry-list) 1))
+    (setq arxiv-current-entry (- (safe-length arxiv-entry-list) 1)))
+  (goto-char (point-min))
+  (forward-line (* 4 arxiv-current-entry))
+  (move-overlay arxiv-highlight-overlay
+		(point) (progn (beginning-of-line 5) (point)))
+  (forward-line (- 4))
   (when arxiv-abstract-window
     (arxiv-show-abstract)))
 
 (defun arxiv-prev-entry (&optional arg)
-  "Move to the previous arXiv entry"
+  "Move to the next arXiv entry"
   (interactive "P")
-  (unless arg
-    (setq arg 1))
-  (while (and (> arg 0)
-              (> arxiv-current-entry 0))
-    (progn
-      ;; (setq arxiv-current-entry (+ arxiv-current-entry -1))
-      (setq arg (+ arg -1))
-      (arxiv-remove-highlight 0)
-      (re-search-backward "^Title:" nil t nil)
-      (beginning-of-line 1)
-      (arxiv-highlight-entry 0 (point))))
-  (setq arxiv-current-entry (/ (line-number-at-pos (point)) 4))
+  (setq arxiv-current-entry (- arxiv-current-entry (prefix-numeric-value arg)))
+  (when (< arxiv-current-entry 0)
+    (setq arxiv-current-entry 0))
+  (goto-char (point-min))
+  (forward-line (* 4 arxiv-current-entry))
+  (move-overlay arxiv-highlight-overlay
+		(point) (progn (beginning-of-line 5) (point)))
+  (forward-line (- 4))
   (when arxiv-abstract-window
     (arxiv-show-abstract)))
 
@@ -130,6 +96,7 @@ If the optional argument is t, don't prompt the user with opening file."
     (setq-local prettify-symbols-alist arxiv-abstract-prettify-symbols-alist)
     (prettify-symbols-mode 1)
     (when tabbar-mode (tabbar-local-mode 1))
+    (setq header-line-format (format " arXiv:%s" (cdr (assoc 'id (nth arxiv-current-entry arxiv-entry-list)))))
     (setq buffer-read-only t))
   (setq arxiv-abstract-window (get-buffer-window abstract-buffer)))
   
@@ -161,17 +128,10 @@ If the optional argument is t, don't prompt the user with opening file."
 (define-key arxiv-mode-map (kbd "SPC") 'arxiv-show-hide-abstract)
 (define-key arxiv-mode-map "d" 'arxiv-download-pdf)
 (define-key arxiv-mode-map "e" 'arxiv-download-pdf-export-bibtex)
-(define-key arxiv-mode-map "b" 'arxiv-export-bibtex-entry)
+(define-key arxiv-mode-map "b" 'arxiv-export-bibtex)
 (define-key arxiv-mode-map "r" 'arxiv-refine-search)
 (define-key arxiv-mode-map "q" 'arxiv-exit)
 (define-key arxiv-mode-map (kbd "?") 'arxiv-help-menu/body)
-
-(setq arxiv-keyword-list-default
-      '(("Title:\\(.*?\\)$" . (1 arxiv-title-face))
-        ("Title\\|Authors\\|Date" . arxiv-keyword-face)))
-
-(defvar arxiv-syntax-table nil 
-  "Syntax table for `arxiv-mode'.")
 
 (defun arxiv-mode ()
   "Major mode for reading arXiv updates online."
@@ -179,17 +139,13 @@ If the optional argument is t, don't prompt the user with opening file."
   (kill-all-local-variables)
   (setq major-mode 'arxiv-mode)
   (setq mode-name "arXiv")
-  ;; (make-local-variable 'paragraph-separate)
-  ;; (make-local-variable 'paragraph-start)
   (make-local-variable 'page-delimiter)
-  ;; (setq paragraph-start "^Title:")
-  ;; (setq paragraph-separate " [ \t\^L]*$")
-  (setq page-delimiter "^Title: ")
+  (setq page-delimiter "^\f")
   (setq font-lock-defaults '(arxiv-keyword-list-default))
-  (set-syntax-table arxiv-mode-syntax-table)
   (use-local-map arxiv-mode-map)
   (setq header-line-format '(:eval (arxiv-headerline-format)))
-  ;; (setq font-lock-multiline t)
+  (setq arxiv-highlight-overlay (make-overlay 1 1))
+  (overlay-put arxiv-highlight-overlay 'face 'highlight)
   (run-mode-hooks 'arxiv-mode-hook))
 
 (defun arxiv-headerline-format ()
@@ -216,26 +172,34 @@ If the optional argument is t, don't prompt the user with opening file."
 	  (erase-buffer)
 	  (mapcar
 	   (lambda (entry)
-	     (progn 
-	       (insert (format "Title: %s\nAuthors: " (cdr (assoc 'title entry))))
-	       (let ((authors (cdr (assoc 'authors entry))))
+	     (progn
+	       (arxiv-insert-with-face (format  " %s\n " (alist-get 'title entry)) 'arxiv-title-face)
+	       (let ((authors (alist-get 'authors entry)))
 		 (while authors
 		   (progn 
-		     (insert (format "%s" (car authors)))
+		     (arxiv-insert-with-face (format "%s" (car authors)) 'arxiv-author-face)
 		     (setq authors (cdr authors))
 		     (if authors
-			 (insert ", "))
+			 (arxiv-insert-with-face ", " 'arxiv-author-face))
 		     )))
-	       (insert (format "\nDate: %s\n\n" (cdr (assoc 'date entry))))))
+	       (let ((date (alist-get 'date entry)))
+		 (string-match "^[-[:digit:]]+ " date)
+		 (arxiv-insert-with-face (format "\n %s " (match-string 0 date)) 'arxiv-date-face))
+	       (let ((cats (alist-get 'categories entry)))
+		 (dolist (cat cats)
+		   (arxiv-insert-with-face (format "[%s] " cat) 'arxiv-keyword-face)))
+	       (insert "\n\n")))
 	   arxiv-entry-list)
 	  (goto-char (point-min))
-	  (arxiv-highlight-entry 0 (point))
 	  (setq arxiv-current-entry 0)
 	  (arxiv-mode)
+	  (move-overlay arxiv-highlight-overlay
+			(point) (progn (beginning-of-line 5) (point)))
+	  (goto-char (point-min))
 	  (message "Showing results %d-%d of %d" arxiv-query-results-min arxiv-query-results-max arxiv-query-total-results)
 	  (setq buffer-read-only t))
 	(switch-to-buffer arxiv-buffer))
-    (message "No articles at this time.")))
+    (message "No articles matching the search condition.")))
 
 (defun arxiv-export-bibtex (&optional pdfpath)
   "Add a new bibtex item to a .bib file according to the current arxiv entry.
@@ -268,11 +232,11 @@ title = {%s},
 author = {%s},
 year = {%s}
 }" title authors year))
+    (message bibtex-info)
     (with-temp-buffer
       (insert bibtex-info)
       (bibtex-mode)
-      (setq key (bibtex-generate-autokey)))
-    (string-match "^@article{,\n\\(.+\\)" bibtex-info)
+      (setq key (bibtex-generate-autokey)))      
     (setq bibtex-info (format "@article{%s,
 title = {%s},
 author = {%s},

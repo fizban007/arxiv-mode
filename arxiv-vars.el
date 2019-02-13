@@ -13,18 +13,14 @@
   "General preferences for the arxiv mode"
   :group 'arxiv)
 
-(defvar arxiv-keyword-list-default nil
-  "A list of highlighting keywords for arXiv mode.")
-
 (defvar arxiv-mode-hook nil
   "A list of functions to call when entering arxiv-mode.")
 
 (defvar arxiv-mode-map nil
   "Key map for arxiv-mode.")
 
-(defvar arxiv-mode-syntax-table (make-syntax-table text-mode-syntax-table))
-
-(defvar arxiv-highlight-overlays [nil nil nil])
+(defvar arxiv-highlight-overlay nil
+  "Overlay for displaying the selected article in arXiv article list.")
 
 (defvar arxiv-entry-list nil
   "Entries for arXiv articles.")
@@ -254,6 +250,12 @@ context is a string seperated by quotes and spaces.")
 (defface arxiv-author-face
   '((t (:inherit font-lock-type-face)))
   "Face name for authors in the arXiv article list."
+  :group 'arxiv-fontification)
+
+(defvar arxiv-date-face 'arxiv-date-face)
+(defface arxiv-date-face
+  '((t (:inherit shadow)))
+  "Face name for date in the arXiv article list."
   :group 'arxiv-fontification)
 
 (defvar arxiv-abstract-face 'arxiv-abstract-face)
