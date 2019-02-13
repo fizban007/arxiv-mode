@@ -133,19 +133,19 @@ Return a alist with various fields."
        )) entries)
   my-list) 
 
-(defun arxiv-query (cat date-start date-end &optional max-num)
+(defun arxiv-query (cat date-start date-end &optional start)
   "Query arXiv for articles in a given category submitted between date-start and date-end."
   (unless (> (string-to-number date-end) (string-to-number date-start))
     (user-error "incorrect date specification"))
-  (arxiv-parse-api (arxiv-geturl-date date-start date-end cat)))
+  (arxiv-parse-api (arxiv-geturl-date date-start date-end cat start)))
 
-(defun arxiv-query-author (author &optional cat max-num)
+(defun arxiv-query-author (author &optional cat start)
   "Query arXiv for articles by certain authors (in a given category)."
-  (arxiv-parse-api (arxiv-geturl-author author cat)))
+  (arxiv-parse-api (arxiv-geturl-author author cat start)))
 
-(defun arxiv-query-general ()
+(defun arxiv-query-general (&optional start)
   "Do a complex search on arXiv for articles according to the list arxiv-query-data-list."
-  (arxiv-parse-api (arxiv-get-api-url)))
+  (arxiv-parse-api (arxiv-get-api-url start)))
 
 (provide 'arxiv-query)
 ;;; arxiv-query.el ends here

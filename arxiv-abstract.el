@@ -60,19 +60,6 @@ the optional misc is a plist for modification of additional properties"
   (arxiv-insert-with-face (format "\nSubmitted: %s" (cdr (assoc 'date entry))) arxiv-subfield-face)
   (arxiv-insert-with-face (format "\nUpdated: %s" (cdr (assoc 'updated entry))) arxiv-subfield-face))
 
-(defun test-font-lock-extend-region ()
-  "Extend the search region to include an entire block of text."
-  ;; Avoid compiler warnings about these global variables from font-lock.el.
-  ;; See the documentation for variable `font-lock-extend-region-functions'.
-  (eval-when-compile (defvar font-lock-beg) (defvar font-lock-end))
-  (save-excursion
-    (goto-char font-lock-beg)
-    (let ((found (or (re-search-backward "\n\n" nil t) (point-min))))
-      (goto-char font-lock-end)
-      (when (re-search-forward "\n\n" nil t)
-        (setq font-lock-end (point)))
-      (setq font-lock-beg found))))
-
 (define-derived-mode arxiv-abstract-mode text-mode "arXiv-abstract"
   "Major mode for reading arXiv abstracts."  
 )

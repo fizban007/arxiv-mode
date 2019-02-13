@@ -25,8 +25,13 @@
   "Move to the next arXiv entry"
   (interactive "P")
   (setq arxiv-current-entry (+ arxiv-current-entry (prefix-numeric-value arg)))
-  (when (> arxiv-current-entry (- (safe-length arxiv-entry-list) 1))
-    (setq arxiv-current-entry (- (safe-length arxiv-entry-list) 1)))
+  (let ((len (- (safe-length arxiv-entry-list) 1)))
+    (when (>= arxiv-current-entry len)
+      (if (eq arxiv-query-results-max arxiv-query-total-results)
+	  (when (> arxiv-current-entry len)
+	    (setq arxiv-current-entry (- (safe-length arxiv-entry-list) 1))
+	    (message "end of search results"))
+	(arxiv-show-next-page))))
   (goto-char (point-min))
   (forward-line (* 4 arxiv-current-entry))
   (move-overlay arxiv-highlight-overlay
@@ -36,11 +41,12 @@
     (arxiv-show-abstract)))
 
 (defun arxiv-prev-entry (&optional arg)
-  "Move to the next arXiv entry"
+  "Move to the previous arXiv entry"
   (interactive "P")
   (setq arxiv-current-entry (- arxiv-current-entry (prefix-numeric-value arg)))
   (when (< arxiv-current-entry 0)
-    (setq arxiv-current-entry 0))
+    (setq arxiv-current-entry 0)
+    (message "beginning of search results"))
   (goto-char (point-min))
   (forward-line (* 4 arxiv-current-entry))
   (move-overlay arxiv-highlight-overlay
@@ -157,7 +163,34 @@ If the optional argument is t, don't prompt the user with opening file."
      (propertize " " 'display `(space :align-to ,info-width))
      entry))))
 
-(defun arxiv-populate-page (page num-per-page &optional arxiv-buffer)
+(defun arxiv-fill-page (&optional min-entry max-entry)
+  "Fill (insert) the details of the article list according to arxiv-entry-list.
+If min-entry and max-entry are ignored, defaults to fill with the whole arxiv-entry-list."
+  (unless min-entry
+    (setq min-entry 0))
+  (let ((arxiv-entry-list-trun (subseq arxiv-entry-list min-entry max-entry))) ; if max is omitted it defaults to be len(list)
+    (mapcar
+     (lambda (entry)
+       (progn
+	 (arxiv-insert-with-face (format  " %s\n " (alist-get 'title entry)) 'arxiv-title-face)
+	 (let ((authors (alist-get 'authors entry)))
+	   (while authors
+	     (progn 
+	       (arxiv-insert-with-face (format "%s" (car authors)) 'arxiv-author-face)
+	       (setq authors (cdr authors))
+	       (if authors
+		   (arxiv-insert-with-face ", " 'arxiv-author-face))
+	       )))
+	 (let ((date (alist-get 'date entry)))
+	   (string-match "^[-[:digit:]]+ " date)
+	   (arxiv-insert-with-face (format "\n %s " (match-string 0 date)) 'arxiv-date-face))
+	 (let ((cats (alist-get 'categories entry)))
+	   (dolist (cat cats)
+	     (arxiv-insert-with-face (format "[%s] " cat) 'arxiv-keyword-face)))
+	 (insert "\n\n")))
+     arxiv-entry-list-trun)))
+
+(defun arxiv-populate-page (&optional arxiv-buffer)
   "Populate the page of results according to arxiv-entry-list."
   (if arxiv-entry-list
       (progn
@@ -167,26 +200,7 @@ If the optional argument is t, don't prompt the user with opening file."
 	  (set-buffer arxiv-buffer)
 	  (setq buffer-read-only nil)
 	  (erase-buffer)
-	  (mapcar
-	   (lambda (entry)
-	     (progn
-	       (arxiv-insert-with-face (format  " %s\n " (alist-get 'title entry)) 'arxiv-title-face)
-	       (let ((authors (alist-get 'authors entry)))
-		 (while authors
-		   (progn 
-		     (arxiv-insert-with-face (format "%s" (car authors)) 'arxiv-author-face)
-		     (setq authors (cdr authors))
-		     (if authors
-			 (arxiv-insert-with-face ", " 'arxiv-author-face))
-		     )))
-	       (let ((date (alist-get 'date entry)))
-		 (string-match "^[-[:digit:]]+ " date)
-		 (arxiv-insert-with-face (format "\n %s " (match-string 0 date)) 'arxiv-date-face))
-	       (let ((cats (alist-get 'categories entry)))
-		 (dolist (cat cats)
-		   (arxiv-insert-with-face (format "[%s] " cat) 'arxiv-keyword-face)))
-	       (insert "\n\n")))
-	   arxiv-entry-list)
+	  (arxiv-fill-page)
 	  (goto-char (point-min))
 	  (setq arxiv-current-entry 0)
 	  (arxiv-mode)
@@ -197,6 +211,37 @@ If the optional argument is t, don't prompt the user with opening file."
 	  (setq buffer-read-only t))
 	(switch-to-buffer arxiv-buffer))
     (message "No articles matching the search condition.")))
+
+(defun arxiv-show-next-page (&optional arxiv-buffer)
+  "Perform one more query (according to arxiv-current-entry and arxiv-entries-per-page) and fill the results into buffer."
+  (unless arxiv-buffer
+    (setq arxiv-buffer (get-buffer "*arXiv-update*")))
+  (let* ((min (* arxiv-entries-per-page (/ (+ 1 arxiv-current-entry) arxiv-entries-per-page)))
+	 (max (+ min arxiv-entries-per-page)))
+    (when (> max arxiv-query-total-results)
+      (setq max arxiv-query-total-results))
+    (message "Fetching results %d-%d..." (+ 1 min) max)
+    (cond
+     ((or (eq arxiv-mode-entry-function 'arxiv-read-new) (eq arxiv-mode-entry-function 'arxiv-read-recent))
+      (setq arxiv-entry-list
+	    (append arxiv-entry-list
+		    (arxiv-query (alist-get 'category arxiv-query-data-list)
+				 (alist-get 'date-start arxiv-query-data-list)
+				 (alist-get 'date-end arxiv-query-data-list)				 
+				 min))))
+     ((eq arxiv-mode-entry-function 'arxiv-read-author)
+      (setq arxiv-entry-list
+	    (append arxiv-entry-list
+		    (arxiv-query-author (alist-get 'author arxiv-query-data-list)
+					(alist-get 'category arxiv-query-data-list)
+					min))))
+     ((or (eq arxiv-mode-entry-function 'arxiv-complex-search) (eq arxiv-mode-entry-function 'arxiv-search))
+      (setq arxiv-entry-list (append arxiv-entry-list (arxiv-query-general min)))))
+    (set-buffer arxiv-buffer)
+    (goto-char (point-max))
+    (setq buffer-read-only nil)
+    (arxiv-fill-page min)
+    (setq buffer-read-only t)))
 
 (defun arxiv-export-bibtex (&optional pdfpath)
   "Add a new bibtex item to a .bib file according to the current arxiv entry.
@@ -318,8 +363,9 @@ year = {%s}" key title authors abstract id url year))
     (setq date-start (concat date-start "1400"))
     (setq date-end (concat date-end "1400"))
     (setq arxiv-entry-list (arxiv-query category date-start date-end))
+    (setq arxiv-query-data-list `((date-start . ,date-start) (date-end . ,date-end) (category . ,category)))
     (setq arxiv-mode-entry-function 'arxiv-read-new)
-    (arxiv-populate-page 0 arxiv-entries-per-page)))
+    (arxiv-populate-page)))
 
 (defun arxiv-read-recent ()
   "read recent (past week) submissions of arXiv in a given category."
@@ -333,8 +379,9 @@ year = {%s}" key title authors abstract id url year))
     (setq date-start (concat date-start "0000"))
     (setq date-end (concat date-end "0000"))
     (setq arxiv-entry-list (arxiv-query category date-start date-end))
+    (setq arxiv-query-data-list `((date-start . ,date-start) (date-end . ,date-end) (category . ,category)))
     (setq arxiv-mode-entry-function 'arxiv-read-recent)
-    (arxiv-populate-page 0 arxiv-entries-per-page)))
+    (arxiv-populate-page)))
 
 (defun arxiv-read-author ()
   "Find the papers by author name."
@@ -345,8 +392,9 @@ year = {%s}" key title authors abstract id url year))
 				  arxiv-categories nil t nil nil arxiv-default-category)))
     (setq arxiv-entry-list (arxiv-query-author author category))
     (setq arxiv-query-info (format " Showing results for author(s): %s in categroy %s." author category))
+    (setq arxiv-query-data-list `((author . ,author) (category . ,category)))
     (setq arxiv-mode-entry-function 'arxiv-read-author)
-    (arxiv-populate-page 0 arxiv-entries-per-page)))
+    (arxiv-populate-page)))
 
 (defun arxiv-search ()
   "Do a simple search on arXiv datebase and list the result in buffer."
@@ -358,7 +406,7 @@ year = {%s}" key title authors abstract id url year))
       (setq arxiv-query-info (format "all:%s" condition))
       (setq arxiv-entry-list (arxiv-query-general))
       (setq arxiv-mode-entry-function 'arxiv-search)
-      (arxiv-populate-page 0 arxiv-entries-per-page))))
+      (arxiv-populate-page))))
 
 (defun arxiv-complex-search ()
   "Do a complex search on arXiv database and list the result in buffer."
@@ -435,7 +483,7 @@ Do exclusive update if condition is nil. Also updates arxiv-query-info."
 	(setq arxiv-query-data-list (nreverse arxiv-query-data-list)) ; fix the reverse order caused in qrxiv-query-data-update ()
 	(setq arxiv-entry-list (arxiv-query-general))
 	(setq arxiv-mode-entry-function 'arxiv-complex-search)
-	(arxiv-populate-page 0 arxiv-entries-per-page))
+	(arxiv-populate-page))
     (message "quit with blank search conditions")))
 
 
@@ -485,7 +533,7 @@ _x_: perform search with current condition(s)       _q_: quit
   ("q" (setq arxiv-query-data-list nil) "quit")
   )
 
-(defhydra arxiv-help-menu (:color blue :foriegn-keys run)
+(defhydra arxiv-help-menu (:color red :foriegn-keys run)
   "
 ArXiv mode help message
 ---------------------------------------------------------------------------------------------------------
