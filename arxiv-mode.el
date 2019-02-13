@@ -3,7 +3,7 @@
 ;; Author: Alex Chen (fizban007)
 ;; Email: fizban007 (at) gmail (dot) com
 ;;
-;; Modified by Simon Lin (iserlohn)
+;; Modified by Simon Lin (Simon-Lin)
 ;; Email: n.sibetz@gmail.com
 ;;
 ;; This software is distributed under GPL license
@@ -140,7 +140,8 @@ If the optional argument is t, don't prompt the user with opening file."
 (define-key arxiv-mode-map (kbd "?") 'arxiv-help-menu/body)
 
 (defun arxiv-mode ()
-  "Major mode for reading arXiv updates online."
+  "Major mode for reading arXiv updates online.
+Press ? for a list of availble commands."
   (interactive)
   (kill-all-local-variables)
   (setq major-mode 'arxiv-mode)

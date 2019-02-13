@@ -4,6 +4,8 @@ arXiv-mode
 arxiv-mode is an [Emacs](www.gnu.org/s/emacs/‎) major mode for viewing
 updates on [arXiv.org](http://arxiv.org).
 
+![screenshot](ScreenShot.png)
+
 This is a fork of the original version of the arxiv-mode by Alex Chen (fizban007).
 Several new functions and features are added to enhance the original mode.
 I'm still working to improve the source code, so changes will happen frequently.
