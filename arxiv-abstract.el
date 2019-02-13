@@ -49,8 +49,8 @@ the optional misc is a plist for modification of additional properties"
 	      (arxiv-insert-with-face (format "%s " (replace-regexp-in-string "_" " " field)) 'arxiv-subfield-face-bold)
 	      (arxiv-insert-with-face (format "(%s)" cat) 'arxiv-subfield-face-bold)
 	      (setq main-cat nil))
-	  (arxiv-insert-with-face (format "%s " (replace-regexp-in-string "_" " " field)) arxiv-subfield-face)
-	  (arxiv-insert-with-face (format "(%s)" cat) arxiv-subfield-face))
+	  (insert (propertize (format "%s " (replace-regexp-in-string "_" " " field)) 'font-lock-face arxiv-subfield-face 'wrap-prefix "  "))
+	  (insert (propertize (format "(%s)" cat) 'font-lock-face arxiv-subfield-face 'wrap-prefix "  ")))
 	(arxiv-insert-with-face "; " arxiv-subfield-face))))
   (delete-char -2)
   ;; journal/DOI
