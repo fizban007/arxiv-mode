@@ -275,10 +275,10 @@ title = {%s},
 author = {%s},
 year = {%s}
 }" title authors year))
-    (message bibtex-info)
     (with-temp-buffer
       (insert bibtex-info)
       (bibtex-mode)
+      (bibtex-set-dialect 'BibTeX t)
       (setq key (bibtex-generate-autokey)))      
     (setq bibtex-info (format "@article{%s,
 title = {%s},
