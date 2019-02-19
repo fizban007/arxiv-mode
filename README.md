@@ -6,18 +6,15 @@ updates on [arXiv.org](http://arxiv.org).
 
 ![screenshot](ScreenShot.png)
 
-This is a fork of the original version of the arxiv-mode by Alex Chen (fizban007).
-Several new functions and features are added to enhance the original mode.
-I'm still working to improve the source code, so changes will happen frequently.
-
 Common Usage
 ============
 
 To start reading abstracts, run `M-x arxiv-read-new` and `M-x arxiv-read-recent`
 to browse new and recent submissions in the given category.
 Use `M-x arxiv-read-author` to search for specific author(s).
+Use `M-x arxiv-search` to perform a simple search on the arXiv database.
 
-For complex searches, use `M-x arxiv-complex-search`.
+For more complicated searches, use `M-x arxiv-complex-search`.
 This command allows user to dynamically refine and modify search conditions.
 You can also use `r` to refine search condition in the abstract list obtained from a complex search.
 
