@@ -55,6 +55,18 @@
   (when arxiv-abstract-window
     (arxiv-show-abstract)))
 
+(defun arxiv-select-entry ()
+    "Select the entry to which the cursor is pointing to"
+    (interactive)
+    (setq arxiv-current-entry (/ (current-line) 4))
+    (goto-char (point-min))
+    (forward-line (* 4 arxiv-current-entry))
+    (move-overlay arxiv-highlight-overlay
+		  (point) (progn (beginning-of-line 5) (point)))
+    (forward-line (- 4))
+    (when arxiv-abstract-window
+      (arxiv-show-abstract)))
+
 (defun arxiv-open-current-url ()
   "Open the webpage for the current highlighted paper entry."
   (interactive)
@@ -116,7 +128,16 @@ If the optional argument is t, don't prompt the user with opening file."
         (delete-window)
         (setq arxiv-abstract-window nil))
     (arxiv-show-abstract)))
- 
+
+(defun arxiv-SPC ()
+  "If the cursor position does not correspond to the current entry, 
+  move the current entry to the corresponding position. Otherwise call
+  arxiv-show-hide-abstract."
+  (interactive)
+  (if (eq (/ (current-line) 4) arxiv-current-entry)
+      (arxiv-show-hide-abstract)
+    (arxiv-select-entry)))
+
 (defun arxiv-exit (&optional arg)
   "Exit from the arXiv mode, deleting all relevant buffers."
   (interactive)
@@ -131,7 +152,7 @@ If the optional argument is t, don't prompt the user with opening file."
 (define-key arxiv-mode-map "p" 'arxiv-prev-entry)
 (define-key arxiv-mode-map "n" 'arxiv-next-entry)
 (define-key arxiv-mode-map (kbd "RET") 'arxiv-open-current-url)
-(define-key arxiv-mode-map (kbd "SPC") 'arxiv-show-hide-abstract)
+(define-key arxiv-mode-map (kbd "SPC") 'arxiv-SPC)
 (define-key arxiv-mode-map "d" 'arxiv-download-pdf)
 (define-key arxiv-mode-map "e" 'arxiv-download-pdf-export-bibtex)
 (define-key arxiv-mode-map "b" 'arxiv-export-bibtex)
@@ -547,7 +568,7 @@ _q_: quit Arxiv mode
   ("p" arxiv-prev-entry)
   ("r" arxiv-refine-search :exit t)
   ("q" arxiv-exit :exit t)
-  ("SPC" arxiv-show-hide-abstract)
+  ("SPC" arxiv-SPC)
   ("RET" arxiv-open-current-url)
   ("d" arxiv-download-pdf)
   ("?" nil)
