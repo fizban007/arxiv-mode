@@ -113,7 +113,7 @@ If the optional argument is t, don't prompt the user with opening file."
     (arxiv-format-abstract-page (nth arxiv-current-entry arxiv-entry-list))
     (setq-local prettify-symbols-alist arxiv-abstract-prettify-symbols-alist)
     (prettify-symbols-mode 1)
-    (when tabbar-mode (tabbar-local-mode 1))
+    (when (bound-and-true-p tabbar-mode) (tabbar-local-mode 1))
     (setq header-line-format (format " arXiv:%s" (cdr (assoc 'id (nth arxiv-current-entry arxiv-entry-list)))))
     (setq buffer-read-only t))
   (setq arxiv-abstract-window (get-buffer-window abstract-buffer)))
