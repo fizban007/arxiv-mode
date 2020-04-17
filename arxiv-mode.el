@@ -58,7 +58,7 @@
 (defun arxiv-select-entry ()
     "Select the entry to which the cursor is pointing to"
     (interactive)
-    (setq arxiv-current-entry (/ (current-line) 4))
+    (setq arxiv-current-entry (/ (line-number-at-pos) 4))
     (goto-char (point-min))
     (forward-line (* 4 arxiv-current-entry))
     (move-overlay arxiv-highlight-overlay
@@ -113,7 +113,7 @@ If the optional argument is t, don't prompt the user with opening file."
     (arxiv-format-abstract-page (nth arxiv-current-entry arxiv-entry-list))
     (setq-local prettify-symbols-alist arxiv-abstract-prettify-symbols-alist)
     (prettify-symbols-mode 1)
-    (when tabbar-mode (tabbar-local-mode 1))
+    (when (bound-and-true-p tabbar-mode) (tabbar-local-mode 1))
     (setq header-line-format (format " arXiv:%s" (cdr (assoc 'id (nth arxiv-current-entry arxiv-entry-list)))))
     (setq buffer-read-only t))
   (setq arxiv-abstract-window (get-buffer-window abstract-buffer)))
@@ -134,7 +134,7 @@ If the optional argument is t, don't prompt the user with opening file."
   move the current entry to the corresponding position. Otherwise call
   arxiv-show-hide-abstract."
   (interactive)
-  (if (eq (/ (current-line) 4) arxiv-current-entry)
+  (if (eq (/ (line-number-at-pos) 4) arxiv-current-entry)
       (arxiv-show-hide-abstract)
     (arxiv-select-entry)))
 
@@ -190,7 +190,7 @@ Press ? for a list of availble commands."
 If min-entry and max-entry are ignored, defaults to fill with the whole arxiv-entry-list."
   (unless min-entry
     (setq min-entry 0))
-  (let ((arxiv-entry-list-trun (subseq arxiv-entry-list min-entry max-entry))) ; if max is omitted it defaults to be len(list)
+  (let ((arxiv-entry-list-trun (seq-subseq arxiv-entry-list min-entry max-entry))) ; if max is omitted it defaults to be len(list)
     (mapcar
      (lambda (entry)
        (progn
