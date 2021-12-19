@@ -16,8 +16,8 @@
 (defvar arxiv-mode-hook nil
   "A list of functions to call when entering arxiv-mode.")
 
-(defvar arxiv-mode-map nil
-  "Key map for arxiv-mode.")
+;; (defvar arxiv-mode-map nil
+;;   "Key map for arxiv-mode.")
 
 (defvar arxiv-highlight-overlay nil
   "Overlay for displaying the selected article in arXiv article list.")

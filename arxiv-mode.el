@@ -1,14 +1,13 @@
-;; Defines the arxiv-mode
-;; 
-;; Author: Alex Chen (fizban007)
-;; Email: fizban007 (at) gmail (dot) com
-;;
-;; Modified by Simon Lin (Simon-Lin)
-;; Email: n.sibetz@gmail.com
-;;
+;;; arxiv-mode.el --- read and search for articles on arXiv.org  -*- lexical-binding: t; -*-
+
+;; Author: Alex Chen (fizban007) <fizban007@gmail.com>
+;;         Simon Lin (Simon-Lin) <n.sibetz@gmail.com>
+
 ;; This software is distributed under GPL license
-;;
-;;
+
+;;; Commentary:
+
+;;; Code:
 
 (require 'overlay)
 (require 'button)
@@ -17,6 +16,31 @@
 (require 'arxiv-vars)
 (require 'arxiv-query)
 (require 'arxiv-abstract)
+
+(defvar arxiv-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "p") 'arxiv-prev-entry)
+    (define-key map (kbd "n") 'arxiv-next-entry)
+    (define-key map (kbd "RET") 'arxiv-open-current-url)
+    (define-key map (kbd "SPC") 'arxiv-SPC)
+    (define-key map (kbd "d") 'arxiv-download-pdf)
+    (define-key map (kbd "e") 'arxiv-download-pdf-export-bibtex)
+    (define-key map (kbd "b") 'arxiv-export-bibtex)
+    (define-key map (kbd "r") 'arxiv-refine-search)
+    (define-key map (kbd "q") 'arxiv-exit)
+    (define-key map (kbd "?") 'arxiv-help-menu/body)
+    map))
+
+(define-derived-mode arxiv-mode special-mode "arXiv"
+  "Major mode for reading updates and searching on arXiv.org.
+Type SPC to expand details on selected entry.
+Type RET to visit the corresponding entry on arXiv.org in browser.
+Type ? to invoke major commands."
+  :group 'arxiv
+  (setq header-line-format '(:eval (arxiv-headerline-format)))
+  (setq arxiv-highlight-overlay (make-overlay 1 1))
+  (overlay-put arxiv-highlight-overlay 'face 'highlight)
+  )
 
 ;; Current window for viewing the arXiv abstract
 (setq arxiv-abstract-window nil)
@@ -148,30 +172,6 @@ If the optional argument is t, don't prompt the user with opening file."
   (when (get-buffer "*arXiv-abstract*")
     (kill-buffer "*arXiv-abstract*")))
 
-(setq arxiv-mode-map (make-sparse-keymap))
-(define-key arxiv-mode-map "p" 'arxiv-prev-entry)
-(define-key arxiv-mode-map "n" 'arxiv-next-entry)
-(define-key arxiv-mode-map (kbd "RET") 'arxiv-open-current-url)
-(define-key arxiv-mode-map (kbd "SPC") 'arxiv-SPC)
-(define-key arxiv-mode-map "d" 'arxiv-download-pdf)
-(define-key arxiv-mode-map "e" 'arxiv-download-pdf-export-bibtex)
-(define-key arxiv-mode-map "b" 'arxiv-export-bibtex)
-(define-key arxiv-mode-map "r" 'arxiv-refine-search)
-(define-key arxiv-mode-map "q" 'arxiv-exit)
-(define-key arxiv-mode-map (kbd "?") 'arxiv-help-menu/body)
-
-(defun arxiv-mode ()
-  "Major mode for reading arXiv updates online.
-Press ? for a list of availble commands."
-  (interactive)
-  (kill-all-local-variables)
-  (setq major-mode 'arxiv-mode)
-  (setq mode-name "arXiv")
-  (use-local-map arxiv-mode-map)
-  (setq header-line-format '(:eval (arxiv-headerline-format)))
-  (setq arxiv-highlight-overlay (make-overlay 1 1))
-  (overlay-put arxiv-highlight-overlay 'face 'highlight)
-  (run-mode-hooks 'arxiv-mode-hook))
 
 (defun arxiv-headerline-format ()
   "update the header line of *arxiv-update* buffer."

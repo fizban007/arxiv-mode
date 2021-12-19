@@ -1,12 +1,6 @@
 ;; Defining the arxiv-abstract-mode
 (require 'arxiv-vars)
 
-(setq arxiv-abstract-mode-map (make-sparse-keymap))
-(define-key arxiv-abstract-mode-map (kbd "RET") 'arxiv-open-current-url)
-(define-key arxiv-abstract-mode-map (kbd "SPC") 'arxiv-show-hide-abstract)
-(define-key arxiv-abstract-mode-map "d" 'arxiv-download-pdf)
-(define-key arxiv-abstract-mode-map "q" 'arxiv-exit)
-
 (defun arxiv-insert-with-face (string face-property)
   "wrapper function to insert a string with given face property.
 the optional misc is a plist for modification of additional properties"
@@ -59,6 +53,16 @@ the optional misc is a plist for modification of additional properties"
   ;; times
   (arxiv-insert-with-face (format "\nSubmitted: %s" (cdr (assoc 'date entry))) arxiv-subfield-face)
   (arxiv-insert-with-face (format "\nUpdated: %s" (cdr (assoc 'updated entry))) arxiv-subfield-face))
+
+(defvar arxiv-abstractmode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") 'arxiv-open-current-url)
+    (define-key map (kbd "SPC") 'arxiv-show-hide-abstract)
+    (define-key map (kbd "d") 'arxiv-download-pdf)
+    (define-key map (kbd "e") 'arxiv-download-pdf-export-bibtex)
+    (define-key map (kbd "b") 'arxiv-export-bibtex)
+    (define-key map (kbd "q") 'arxiv-exit)
+    map))
 
 (define-derived-mode arxiv-abstract-mode text-mode "arXiv-abstract"
   "Major mode for reading arXiv abstracts."  
