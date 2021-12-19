@@ -244,13 +244,20 @@ If min-entry and max-entry are ignored, defaults to fill with the whole arxiv-en
       (setq max arxiv-query-total-results))
     (message "Fetching results %d-%d..." (+ 1 min) max)
     (cond
-     ((or (eq arxiv-mode-entry-function 'arxiv-read-new) (eq arxiv-mode-entry-function 'arxiv-read-recent))
+     ((eq arxiv-mode-entry-function 'arxiv-read-new)
       (setq arxiv-entry-list
 	    (append arxiv-entry-list
 		    (arxiv-query (alist-get 'category arxiv-query-data-list)
 				 (alist-get 'date-start arxiv-query-data-list)
 				 (alist-get 'date-end arxiv-query-data-list)				 
-				 min))))
+				 min t))))
+     ((eq arxiv-mode-entry-function 'arxiv-read-recent)
+      (setq arxiv-entry-list
+	    (append arxiv-entry-list
+		    (arxiv-query (alist-get 'category arxiv-query-data-list)
+				 (alist-get 'date-start arxiv-query-data-list)
+				 (alist-get 'date-end arxiv-query-data-list)				 
+				 min nil))))
      ((eq arxiv-mode-entry-function 'arxiv-read-author)
       (setq arxiv-entry-list
 	    (append arxiv-entry-list
@@ -336,55 +343,64 @@ year = {%s}" key title authors abstract id url year))
   (interactive)
   (let*
       ((time (current-time))
-       (day (string-to-number (format-time-string "%u" time "EST")))       
+       (TZ "EST+5EDT,M3.2.0/2,M11.1.0/2") ;; arXiv (Cornell) is based on eastern time (ET)
+       (day (string-to-number (format-time-string "%u" time TZ)))
        (date-start nil)
        (date-end nil)
        (dayname-start "")
        (dayname-end "")
        (category (completing-read "Select category: "
 				  arxiv-categories nil t nil nil arxiv-default-category)))
-    ;; arxiv announces new submssions on 20:00 EST. Check it's 20:00 yet.
-    (when (< (string-to-number (format-time-string "%H" time "EST")) 20)
+    
+    ;; arxiv announces new submissions on 20:00 ET. Check if it's 20:00 yet.
+    (when (< (string-to-number (format-time-string "%H" time TZ)) 20)
       (setq day (- day 1))
       (setq time (time-subtract time 86400)))
     
+    ;; new submission deadlines are 14:00 ET
+    (let* ((dectime (decode-time time TZ))
+	   (daysec (+ (* (decoded-time-hour dectime) 3600) (* (decoded-time-minute dectime) 60) (decoded-time-second dectime)))
+	   (timediff (- daysec (* 14 3600))))
+      (setq time (time-subtract time timediff)))
+            
+    ;; time for submissions are listed in UTC
     (cond
      ((equal day 5) ; Friday
       (progn
-	(setq date-start (format-time-string "%Y%m%d" (time-subtract time (* 2 86400)) "EST"))
-	(setq date-end (format-time-string "%Y%m%d" (time-subtract time 86400) "EST"))
+	(setq date-start (format-time-string "%Y%m%d%H%M" (time-subtract time (* 2 86400)) "UTC"))
+	(setq date-end (format-time-string "%Y%m%d%H%M" (time-subtract time 86400) "UTC"))
 	(setq dayname-start "Wed")
 	(setq dayname-end "Thu")))
      ((equal day 6) ; Saturday
       (progn
-	(setq date-start (format-time-string "%Y%m%d" (time-subtract time (* 3 86400)) "EST"))
-	(setq date-end (format-time-string "%Y%m%d" (time-subtract time (* 2 86400)) "EST"))
+	(setq date-start (format-time-string "%Y%m%d%H%M" (time-subtract time (* 3 86400)) "UTC"))
+	(setq date-end (format-time-string "%Y%m%d%H%M" (time-subtract time (* 2 86400)) "UTC"))
 	(setq dayname-start "Wed")
 	(setq dayname-end "Thu")))
      ((or (equal day 7) (eq day 0)) ; Sunday
       (progn
-	(setq date-start (format-time-string "%Y%m%d" (time-subtract time (* 3 86400)) "EST"))
-	(setq date-end (format-time-string "%Y%m%d" (time-subtract time (* 2 86400)) "EST"))
+	(setq date-start (format-time-string "%Y%m%d%H%M" (time-subtract time (* 3 86400)) "UTC"))
+	(setq date-end (format-time-string "%Y%m%d%H%M" (time-subtract time (* 2 86400)) "UTC"))
 	(setq dayname-start "Thu")
 	(setq dayname-end "Fri")))
      ((equal day 1) ; Monday
       (progn
-	(setq date-start (format-time-string "%Y%m%d" (time-subtract time (* 3 86400)) "EST"))
-	(setq date-end (format-time-string "%Y%m%d" time "EST"))
+	(setq date-start (format-time-string "%Y%m%d%H%M" (time-subtract time (* 3 86400)) "UTC"))
+	(setq date-end (format-time-string "%Y%m%d%H%M" time TZ))
 	(setq dayname-start "Fri")
 	(setq dayname-end "Mon")))
      (t ; Tue - Thu, read from previous day
       (progn
-	(setq date-start (format-time-string "%Y%m%d" (time-subtract time 86400) "EST"))
-	(setq date-end (format-time-string "%Y%m%d" time "EST"))
-	(setq dayname-start (format-time-string "%a" (time-subtract time 86400) "EST"))
-	(setq dayname-end (format-time-string "%a" time "EST")))))
+	(setq date-start (format-time-string "%Y%m%d%H%M" (time-subtract time 86400) "UTC"))
+	(setq date-end (format-time-string "%Y%m%d%H%M" time TZ))
+	(setq dayname-start (format-time-string "%a" (time-subtract time 86400) "UTC"))
+	(setq dayname-end (format-time-string "%a" time TZ)))))
     ;; day to week name
-    (setq arxiv-query-info (format " Showing new submissions in %s from %s(%s) to %s(%s) (EST)."
+    (setq arxiv-query-info (format " Showing new submissions in %s from %s(%s) to %s(%s)."
 				   category date-start dayname-start date-end dayname-end))
-    (setq date-start (concat date-start "1400"))
-    (setq date-end (concat date-end "1400"))
-    (setq arxiv-entry-list (arxiv-query category date-start date-end))
+    ;; (setq date-start (concat date-start "1400"))
+    ;; (setq date-end (concat date-end "1400"))
+    (setq arxiv-entry-list (arxiv-query category date-start date-end nil t))
     (setq arxiv-query-data-list `((date-start . ,date-start) (date-end . ,date-end) (category . ,category)))
     (setq arxiv-mode-entry-function 'arxiv-read-new)
     (arxiv-populate-page)))

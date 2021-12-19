@@ -55,14 +55,18 @@ When using this function, make sure that the first item of the list has t condit
 	(setq url (concat url (arxiv-parse-query-data (nth 2 query-data))))))
     (setq url (concat url (format "&start=%d&max_results=%d" start max-num)))))
 
-(defun arxiv-geturl-date (dateStart dateEnd category &optional start max-num)
-  "get the API url for articles between dateStart and dateEnd in the specified category."
+(defun arxiv-geturl-date (dateStart dateEnd category &optional start max-num ascending)
+  "Get the API url for articles between dateStart and dateEnd in the specified category.
+If ASCENDING is t then sort the list by ascending order instead of descending."
   (unless start
     (setq start 0))  ; Start with the first result
   (unless max-num
     (setq max-num arxiv-entries-per-page))
-  (format "%s?search_query=submittedDate:[%s+TO+%s]+AND+cat:%s*&sortBy=submittedDate&sortOrder=descending&start=%d&max_results=%d" 
-          arxiv-url dateStart dateEnd category start max-num))
+  (if ascending
+      (setq ascending "ascending")
+    ((setq ascending "descending")))
+  (format "%s?search_query=submittedDate:[%s+TO+%s]+AND+cat:%s*&sortBy=submittedDate&sortOrder=%s&start=%d&max_results=%d" 
+              arxiv-url dateStart dateEnd category ascending start max-num))
 
 (defun arxiv-geturl-author (author &optional category start max-num)
   "get the API url for articles by certain author."
@@ -138,13 +142,14 @@ Return a alist with various fields."
 		  (print root (get-buffer "*arxiv-debug*"))
 		  (error "Cannot parse the API query result. Refer to the debug buffer for informations.")))))))
 
-(defun arxiv-query (cat date-start date-end &optional start)
-  "Query arXiv for articles in a given category submitted between date-start and date-end."
+(defun arxiv-query (cat date-start date-end &optional start ascending)
+  "Query arXiv for articles in a given category submitted between date-start and date-end.
+If ASCENDING is t then sort the list by ascending order instead of descending."
   (unless (> (string-to-number date-end) (string-to-number date-start))
     (user-error "incorrect date specification"))
-  (arxiv-parse-api (arxiv-geturl-date date-start date-end cat start)))
+  (arxiv-parse-api (arxiv-geturl-date date-start date-end cat start nil ascending)))
 
-(defun arxiv-query-author (author &optional cat start)
+(defun arxiv-query-author (author &optional cat start ascending)
   "Query arXiv for articles by certain authors (in a given category)."
   (arxiv-parse-api (arxiv-geturl-author author cat start)))
 
