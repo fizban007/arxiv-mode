@@ -1,4 +1,4 @@
-;; Defining the common variables for arxiv-mode
+;;; arxiv-vars.el --- Defining the common variables for arxiv-mode  -*- lexical-binding: t; -*-
 
 (defgroup arxiv nil
   "A mode for reading arXiv abstracts"
@@ -18,6 +18,10 @@
 
 ;; (defvar arxiv-mode-map nil
 ;;   "Key map for arxiv-mode.")
+
+
+(defvar arxiv-abstract-window nil
+  "Current window for viewing the arXiv abstract.")
 
 (defvar arxiv-highlight-overlay nil
   "Overlay for displaying the selected article in arXiv article list.")
@@ -207,6 +211,11 @@ context is a string seperated by quotes and spaces.")
     (stat.TH . Statistics_Theory))
   "arXiv subjects alist for displaying.")
 
+(defcustom arxiv-use-variable-pitch nil
+  "Whether to use variable pitch fonts in arxiv-mode buffers."
+  :group 'arxiv-preferences
+  :type 'boolean)
+
 (defcustom arxiv-entries-per-page 100
   "Number of entries per page in the article list."
   :group 'arxiv-preferences
@@ -228,7 +237,7 @@ context is a string seperated by quotes and spaces.")
   :group 'arxiv-preferences
   :type 'string)
 
-(defcustom arxiv-pdf-open-function (lambda (fpath) (call-process "open" nil 0 nil "-a" "/Applications/Preview.app" fpath))
+(defcustom arxiv-pdf-open-function 'find-alternate-file-other-window
   "Default function to open PDF file."
   :group 'arxiv-preferences
   :type 'function)
@@ -236,7 +245,7 @@ context is a string seperated by quotes and spaces.")
 ;; Defining custom faces
 (defvar arxiv-title-face 'arxiv-title-face)
 (defface arxiv-title-face 
-  '((t (:inherit font-lock-keyword-face :height 1.2 :family "Lucida Grande")))
+  '((t (:inherit font-lock-keyword-face :height 1.2)))
   "Face name for article titles in the arXiv article list."
   :group 'arxiv-fontification)
 

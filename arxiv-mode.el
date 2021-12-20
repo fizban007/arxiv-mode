@@ -2,6 +2,10 @@
 
 ;; Author: Alex Chen (fizban007) <fizban007@gmail.com>
 ;;         Simon Lin (Simon-Lin) <n.sibetz@gmail.com>
+;;
+;; Version: 0.3.0
+;;
+;; Package-Requires: ((hydra "0.15.0"))
 
 ;; This software is distributed under GPL license
 
@@ -9,13 +13,12 @@
 
 ;;; Code:
 
-(require 'overlay)
-(require 'button)
+;; (require 'overlay)
+;; (require 'button)
 (require 'org)
 (require 'hydra)
 (require 'arxiv-vars)
 (require 'arxiv-query)
-(require 'arxiv-abstract)
 
 (defvar arxiv-mode-map
   (let ((map (make-sparse-keymap)))
@@ -40,10 +43,35 @@ Type ? to invoke major commands."
   (setq header-line-format '(:eval (arxiv-headerline-format)))
   (setq arxiv-highlight-overlay (make-overlay 1 1))
   (overlay-put arxiv-highlight-overlay 'face 'highlight)
+  (if arxiv-use-variable-pitch
+      (variable-pitch-mode 1)
+    (variable-pitch-mode -1))
   )
 
-;; Current window for viewing the arXiv abstract
-(setq arxiv-abstract-window nil)
+(defvar arxiv-abstractmode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") 'arxiv-open-current-url)
+    (define-key map (kbd "SPC") 'arxiv-show-hide-abstract)
+    (define-key map (kbd "d") 'arxiv-download-pdf)
+    (define-key map (kbd "e") 'arxiv-download-pdf-export-bibtex)
+    (define-key map (kbd "b") 'arxiv-export-bibtex)
+    (define-key map (kbd "q") 'arxiv-exit)
+    map))
+
+(define-derived-mode arxiv-abstract-mode text-mode "arXiv-abstract"
+  "Major mode for reading arXiv abstracts."
+  (if arxiv-use-variable-pitch
+      (variable-pitch-mode 1)
+    (variable-pitch-mode -1))
+)
+
+(defun arxiv-insert-with-face (string face-property)
+  "wrapper function to insert a string with given face property."
+  (insert (propertize string 'font-lock-face face-property)))
+
+;; (defun arxiv-get-plist ()
+;;   (interactive)
+;;   (print (text-properties-at (point))))
 
 (defun arxiv-next-entry (&optional arg)
   "Move to the next arXiv entry"
@@ -133,11 +161,10 @@ If the optional argument is t, don't prompt the user with opening file."
     (set-buffer abstract-buffer)
     (setq buffer-read-only nil)
     (erase-buffer)
-    (arxiv-abstract-mode)    
+    (arxiv-abstract-mode)
     (arxiv-format-abstract-page (nth arxiv-current-entry arxiv-entry-list))
     (setq-local prettify-symbols-alist arxiv-abstract-prettify-symbols-alist)
     (prettify-symbols-mode 1)
-    (when (bound-and-true-p tabbar-mode) (tabbar-local-mode 1))
     (setq header-line-format (format " arXiv:%s" (cdr (assoc 'id (nth arxiv-current-entry arxiv-entry-list)))))
     (setq buffer-read-only t))
   (setq arxiv-abstract-window (get-buffer-window abstract-buffer)))
@@ -271,6 +298,50 @@ If min-entry and max-entry are ignored, defaults to fill with the whole arxiv-en
     (setq buffer-read-only nil)
     (arxiv-fill-page min)
     (setq buffer-read-only t)))
+
+(defun arxiv-format-abstract-page (entry)
+  (arxiv-insert-with-face (format "\n%s\n\n" (cdr (assoc 'title entry))) '(arxiv-title-face (:height 1.2 :weight semi-bold)))
+  ;; author list
+  (let ((authors (cdr (assoc 'authors entry))))
+    (dolist (author authors)
+      (arxiv-insert-with-face (format "%s" author) '(arxiv-author-face (:height 1.1 :underline t)))
+      (insert ", ")))
+  (delete-char -2)
+  (insert "\n\n")
+  ;; abstract
+  (let ((abstract (cdr (assoc 'abstract entry))))
+    (arxiv-insert-with-face "    " arxiv-abstract-face)
+    (setq abstract (replace-regexp-in-string "^ +" "" abstract))    
+    (insert (propertize abstract 'font-lock-face arxiv-abstract-face 'wrap-prefix "    ")))
+  ;; highlight math
+  (save-excursion
+    (while (search-backward-regexp "\\$[^$]+\\$" nil t)
+      (add-text-properties (match-beginning 0) (match-end 0) '(font-lock-face arxiv-abstract-math-face))))
+  ;; comment
+  (if (cdr (assoc 'comment entry))
+      (arxiv-insert-with-face (format "\n\nComments: %s" (cdr (assoc 'comment entry))) arxiv-subfield-face)
+    (arxiv-insert-with-face "\n\nComments: N/A" arxiv-subfield-face))
+  ;; subject
+  (arxiv-insert-with-face (format "\nSubjects: ") arxiv-subfield-face)
+  (let* ((main-cat t) (cats (cdr (assoc 'categories entry))))
+    (dolist (cat cats)
+      (let (field)
+	(setq field (symbol-name (cdr (assoc (intern-soft cat) arxiv-subject-classifications))))
+	(if main-cat
+	    (progn ; the main subject is in bold
+	      (arxiv-insert-with-face (format "%s " (replace-regexp-in-string "_" " " field)) 'arxiv-subfield-face-bold)
+	      (arxiv-insert-with-face (format "(%s)" cat) 'arxiv-subfield-face-bold)
+	      (setq main-cat nil))
+	  (insert (propertize (format "%s " (replace-regexp-in-string "_" " " field)) 'font-lock-face arxiv-subfield-face 'wrap-prefix "  "))
+	  (insert (propertize (format "(%s)" cat) 'font-lock-face arxiv-subfield-face 'wrap-prefix "  ")))
+	(arxiv-insert-with-face "; " arxiv-subfield-face))))
+  (delete-char -2)
+  ;; journal/DOI
+  (when (cdr (assoc 'journal entry)) (arxiv-insert-with-face (format "\nJournal: %s" (cdr (assoc 'journal entry))) arxiv-subfield-face))
+  (when (cdr (assoc 'DOI entry)) (arxiv-insert-with-face (format "\nDOI: %s" (cdr (assoc 'DOI entry))) arxiv-subfield-face))
+  ;; times
+  (arxiv-insert-with-face (format "\nSubmitted: %s" (cdr (assoc 'date entry))) arxiv-subfield-face)
+  (arxiv-insert-with-face (format "\nUpdated: %s" (cdr (assoc 'updated entry))) arxiv-subfield-face))
 
 (defun arxiv-export-bibtex (&optional pdfpath)
   "Add a new bibtex item to a .bib file according to the current arxiv entry.

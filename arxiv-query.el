@@ -1,4 +1,4 @@
-;; arXiv query functions
+;;; arxiv-query.el --- arXiv query functions  -*- lexical-binding: t; -*-
 
 (require 'xml)
 
@@ -64,7 +64,7 @@ If ASCENDING is t then sort the list by ascending order instead of descending."
     (setq max-num arxiv-entries-per-page))
   (if ascending
       (setq ascending "ascending")
-    ((setq ascending "descending")))
+    (setq ascending "descending"))
   (format "%s?search_query=submittedDate:[%s+TO+%s]+AND+cat:%s*&sortBy=submittedDate&sortOrder=%s&start=%d&max_results=%d" 
               arxiv-url dateStart dateEnd category ascending start max-num))
 
