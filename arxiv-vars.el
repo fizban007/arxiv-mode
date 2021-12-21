@@ -20,8 +20,14 @@
 ;;   "Key map for arxiv-mode.")
 
 
+(defvar arxiv-buffer nil
+  "Current buffer for viewing arXiv updates.")
+
 (defvar arxiv-abstract-window nil
   "Current window for viewing the arXiv abstract.")
+
+(defvar arxiv-abstract-buffer nil
+  "Current buffer for viewing the arXiv abstract.")
 
 (defvar arxiv-highlight-overlay nil
   "Overlay for displaying the selected article in arXiv article list.")

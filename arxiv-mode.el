@@ -58,7 +58,7 @@ Type ? to invoke major commands."
     (define-key map (kbd "q") 'arxiv-exit)
     map))
 
-(define-derived-mode arxiv-abstract-mode text-mode "arXiv-abstract"
+(define-derived-mode arxiv-abstract-mode special-mode "arXiv-abstract"
   "Major mode for reading arXiv abstracts."
   (if arxiv-use-variable-pitch
       (variable-pitch-mode 1)
@@ -154,20 +154,16 @@ If the optional argument is t, don't prompt the user with opening file."
 
 (defun arxiv-show-abstract ()
   (unless arxiv-abstract-window
-    (setq abstract-window (split-window-right)))
-  (setq abstract-buffer (get-buffer-create "*arXiv-abstract*"))
-  (with-selected-window abstract-window
-    (switch-to-buffer abstract-buffer)
-    (set-buffer abstract-buffer)
-    (setq buffer-read-only nil)
-    (erase-buffer)
+    (setq arxiv-abstract-window (split-window-right)))
+  (setq arxiv-abstract-buffer (get-buffer-create "*arXiv-abstract*"))
+  (with-selected-window arxiv-abstract-window
+    (switch-to-buffer arxiv-abstract-buffer)
+    ;; (set-buffer arxiv-abstract-buffer)
     (arxiv-abstract-mode)
     (arxiv-format-abstract-page (nth arxiv-current-entry arxiv-entry-list))
     (setq-local prettify-symbols-alist arxiv-abstract-prettify-symbols-alist)
     (prettify-symbols-mode 1)
-    (setq header-line-format (format " arXiv:%s" (cdr (assoc 'id (nth arxiv-current-entry arxiv-entry-list)))))
-    (setq buffer-read-only t))
-  (setq arxiv-abstract-window (get-buffer-window abstract-buffer)))
+    (setq header-line-format (format " arXiv:%s" (cdr (assoc 'id (nth arxiv-current-entry arxiv-entry-list)))))))
   
 (defun arxiv-show-hide-abstract (&optional arg)
   "Toggle the visibility of the abstract. If the abstract window
@@ -300,48 +296,51 @@ If min-entry and max-entry are ignored, defaults to fill with the whole arxiv-en
     (setq buffer-read-only t)))
 
 (defun arxiv-format-abstract-page (entry)
-  (arxiv-insert-with-face (format "\n%s\n\n" (cdr (assoc 'title entry))) '(arxiv-title-face (:height 1.2 :weight semi-bold)))
-  ;; author list
-  (let ((authors (cdr (assoc 'authors entry))))
-    (dolist (author authors)
-      (arxiv-insert-with-face (format "%s" author) '(arxiv-author-face (:height 1.1 :underline t)))
-      (insert ", ")))
-  (delete-char -2)
-  (insert "\n\n")
-  ;; abstract
-  (let ((abstract (cdr (assoc 'abstract entry))))
-    (arxiv-insert-with-face "    " arxiv-abstract-face)
-    (setq abstract (replace-regexp-in-string "^ +" "" abstract))    
-    (insert (propertize abstract 'font-lock-face arxiv-abstract-face 'wrap-prefix "    ")))
-  ;; highlight math
-  (save-excursion
-    (while (search-backward-regexp "\\$[^$]+\\$" nil t)
-      (add-text-properties (match-beginning 0) (match-end 0) '(font-lock-face arxiv-abstract-math-face))))
-  ;; comment
-  (if (cdr (assoc 'comment entry))
-      (arxiv-insert-with-face (format "\n\nComments: %s" (cdr (assoc 'comment entry))) arxiv-subfield-face)
-    (arxiv-insert-with-face "\n\nComments: N/A" arxiv-subfield-face))
-  ;; subject
-  (arxiv-insert-with-face (format "\nSubjects: ") arxiv-subfield-face)
-  (let* ((main-cat t) (cats (cdr (assoc 'categories entry))))
-    (dolist (cat cats)
-      (let (field)
-	(setq field (symbol-name (cdr (assoc (intern-soft cat) arxiv-subject-classifications))))
-	(if main-cat
-	    (progn ; the main subject is in bold
-	      (arxiv-insert-with-face (format "%s " (replace-regexp-in-string "_" " " field)) 'arxiv-subfield-face-bold)
-	      (arxiv-insert-with-face (format "(%s)" cat) 'arxiv-subfield-face-bold)
-	      (setq main-cat nil))
-	  (insert (propertize (format "%s " (replace-regexp-in-string "_" " " field)) 'font-lock-face arxiv-subfield-face 'wrap-prefix "  "))
-	  (insert (propertize (format "(%s)" cat) 'font-lock-face arxiv-subfield-face 'wrap-prefix "  ")))
-	(arxiv-insert-with-face "; " arxiv-subfield-face))))
-  (delete-char -2)
-  ;; journal/DOI
-  (when (cdr (assoc 'journal entry)) (arxiv-insert-with-face (format "\nJournal: %s" (cdr (assoc 'journal entry))) arxiv-subfield-face))
-  (when (cdr (assoc 'DOI entry)) (arxiv-insert-with-face (format "\nDOI: %s" (cdr (assoc 'DOI entry))) arxiv-subfield-face))
-  ;; times
-  (arxiv-insert-with-face (format "\nSubmitted: %s" (cdr (assoc 'date entry))) arxiv-subfield-face)
-  (arxiv-insert-with-face (format "\nUpdated: %s" (cdr (assoc 'updated entry))) arxiv-subfield-face))
+  (with-current-buffer arxiv-abstract-buffer
+    (let ((buffer-read-only nil))
+      (erase-buffer)
+      (arxiv-insert-with-face (format "\n%s\n\n" (cdr (assoc 'title entry))) '(arxiv-title-face (:height 1.2 :weight semi-bold)))
+      ;; author list
+      (let ((authors (cdr (assoc 'authors entry))))
+	(dolist (author authors)
+	  (arxiv-insert-with-face (format "%s" author) '(arxiv-author-face (:height 1.1 :underline t)))
+	  (insert ", ")))
+      (delete-char -2)
+      (insert "\n\n")
+      ;; abstract
+      (let ((abstract (cdr (assoc 'abstract entry))))
+	(arxiv-insert-with-face "    " arxiv-abstract-face)
+	(setq abstract (replace-regexp-in-string "^ +" "" abstract))    
+	(insert (propertize abstract 'font-lock-face arxiv-abstract-face 'wrap-prefix "    ")))
+      ;; highlight math
+      (save-excursion
+	(while (search-backward-regexp "\\$[^$]+\\$" nil t)
+	  (add-text-properties (match-beginning 0) (match-end 0) '(font-lock-face arxiv-abstract-math-face))))
+      ;; comment
+      (if (cdr (assoc 'comment entry))
+	  (arxiv-insert-with-face (format "\n\nComments: %s" (cdr (assoc 'comment entry))) arxiv-subfield-face)
+	(arxiv-insert-with-face "\n\nComments: N/A" arxiv-subfield-face))
+      ;; subject
+      (arxiv-insert-with-face (format "\nSubjects: ") arxiv-subfield-face)
+      (let* ((main-cat t) (cats (cdr (assoc 'categories entry))))
+	(dolist (cat cats)
+	  (let (field)
+	    (setq field (symbol-name (cdr (assoc (intern-soft cat) arxiv-subject-classifications))))
+	    (if main-cat
+		(progn ; the main subject is in bold
+		  (arxiv-insert-with-face (format "%s " (replace-regexp-in-string "_" " " field)) 'arxiv-subfield-face-bold)
+		  (arxiv-insert-with-face (format "(%s)" cat) 'arxiv-subfield-face-bold)
+		  (setq main-cat nil))
+	      (insert (propertize (format "%s " (replace-regexp-in-string "_" " " field)) 'font-lock-face arxiv-subfield-face 'wrap-prefix "  "))
+	      (insert (propertize (format "(%s)" cat) 'font-lock-face arxiv-subfield-face 'wrap-prefix "  ")))
+	    (arxiv-insert-with-face "; " arxiv-subfield-face))))
+      (delete-char -2)
+      ;; journal/DOI
+      (when (cdr (assoc 'journal entry)) (arxiv-insert-with-face (format "\nJournal: %s" (cdr (assoc 'journal entry))) arxiv-subfield-face))
+      (when (cdr (assoc 'DOI entry)) (arxiv-insert-with-face (format "\nDOI: %s" (cdr (assoc 'DOI entry))) arxiv-subfield-face))
+      ;; times
+      (arxiv-insert-with-face (format "\nSubmitted: %s" (cdr (assoc 'date entry))) arxiv-subfield-face)
+      (arxiv-insert-with-face (format "\nUpdated: %s" (cdr (assoc 'updated entry))) arxiv-subfield-face))))
 
 (defun arxiv-export-bibtex (&optional pdfpath)
   "Add a new bibtex item to a .bib file according to the current arxiv entry.
@@ -409,6 +408,10 @@ year = {%s}" key title authors abstract id url year))
   (interactive)
   (arxiv-export-bibtex (arxiv-download-pdf t)))
 
+
+;; Entry functions
+
+;;;###autoload
 (defun arxiv-read-new ()
   "read new (submitted in the previous work day) arXiv articles in a given category."
   (interactive)
@@ -476,6 +479,7 @@ year = {%s}" key title authors abstract id url year))
     (setq arxiv-mode-entry-function 'arxiv-read-new)
     (arxiv-populate-page)))
 
+;;;###autoload
 (defun arxiv-read-recent ()
   "read recent (past week) submissions of arXiv in a given category."
   (interactive)
@@ -492,6 +496,7 @@ year = {%s}" key title authors abstract id url year))
     (setq arxiv-mode-entry-function 'arxiv-read-recent)
     (arxiv-populate-page)))
 
+;;;###autoload
 (defun arxiv-read-author ()
   "Find the papers by author name."
   (interactive)
@@ -505,6 +510,7 @@ year = {%s}" key title authors abstract id url year))
     (setq arxiv-mode-entry-function 'arxiv-read-author)
     (arxiv-populate-page)))
 
+;;;###autoload
 (defun arxiv-search ()
   "Do a simple search on arXiv datebase and list the result in buffer."
   (interactive)
@@ -517,6 +523,7 @@ year = {%s}" key title authors abstract id url year))
       (setq arxiv-mode-entry-function 'arxiv-search)
       (arxiv-populate-page))))
 
+;;;###autoload
 (defun arxiv-complex-search ()
   "Do a complex search on arXiv database and list the result in buffer."
   (interactive)

@@ -90,9 +90,11 @@ If ASCENDING is t then sort the list by ascending order instead of descending."
   "Call arXiv api url and parse its response.
 Return a alist with various fields."
   (with-current-buffer (url-retrieve-synchronously url)
+    (set-buffer-multibyte t) ;; enable utf-8 decoding
+    ;; (view-buffer-other-window (current-buffer))
     (let* ((root (car (xml-parse-region)))
 	   (entries (xml-get-children root 'entry))
-	   (formated-list)
+	   (formated-list) (alist-entry)
 	   (pdf) (link) (id) (title) (abstract) (publishdate) (updatedate) (authors) (names) (doi) (comment) (journal) (categories))
       (condition-case exception
 	  (progn
@@ -134,7 +136,7 @@ Return a alist with various fields."
 				     (journal . ,journal)
 				     (categories . ,categories)
 				     (pdf . ,pdf)))
-		 (setq formated-list (append formated-list `(,alist-entry)))
+		 (setq formated-list (append formated-list (list alist-entry)))
 		 )) entries)
 	    formated-list)
 	('error (progn
