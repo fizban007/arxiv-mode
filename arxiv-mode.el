@@ -14,8 +14,7 @@
 ;;; Code:
 
 ;; (require 'overlay)
-;; (require 'button)
-(require 'org)
+(require 'button)
 (require 'hydra)
 (require 'arxiv-vars)
 (require 'arxiv-query)
@@ -48,7 +47,7 @@ Type ? to invoke major commands."
     (variable-pitch-mode -1))
   )
 
-(defvar arxiv-abstractmode-map
+(defvar arxiv-abstract-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'arxiv-open-current-url)
     (define-key map (kbd "SPC") 'arxiv-show-hide-abstract)
@@ -218,14 +217,16 @@ If min-entry and max-entry are ignored, defaults to fill with the whole arxiv-en
      (lambda (entry)
        (progn
 	 (arxiv-insert-with-face (format  " %s\n " (alist-get 'title entry)) 'arxiv-title-face)
-	 (let ((authors (alist-get 'authors entry)))
-	   (while authors
-	     (progn 
-	       (arxiv-insert-with-face (format "%s" (car authors)) 'arxiv-author-face)
-	       (setq authors (cdr authors))
-	       (if authors
-		   (arxiv-insert-with-face ", " 'arxiv-author-face))
-	       )))
+	 (let ((authors (copy-sequence (alist-get 'authors entry))) (overlength nil))
+	   (when (> (length authors) arxiv-author-list-maximum)
+	     (setcdr (nthcdr (1- arxiv-author-list-maximum) authors) nil)
+	     (setq overlength t))
+	   (dolist (author authors)
+	     (arxiv-insert-with-face (format "%s" author) 'arxiv-author-face)
+	     (insert ", "))
+	   (if overlength
+	       (insert "et al.")
+	     (delete-char -2)))
 	 (let ((date (alist-get 'date entry)))
 	   (string-match "^[-[:digit:]]+ " date)
 	   (arxiv-insert-with-face (format "\n %s " (match-string 0 date)) 'arxiv-date-face))
@@ -299,11 +300,26 @@ If min-entry and max-entry are ignored, defaults to fill with the whole arxiv-en
   (with-current-buffer arxiv-abstract-buffer
     (let ((buffer-read-only nil))
       (erase-buffer)
-      (arxiv-insert-with-face (format "\n%s\n\n" (cdr (assoc 'title entry))) '(arxiv-title-face (:height 1.2 :weight semi-bold)))
+      ;; title
+      (arxiv-insert-with-face "\n" '(arxiv-title-face (:height 1.2)))
+      (insert-button (format "%s" (cdr (assoc 'title entry)))
+		     'action (lambda (x) (arxiv-open-current-url))
+		     'face '(arxiv-title-face (:height 1.4 :weight semi-bold :underline t))
+		     'mouse-face 'highlight
+		     'follow-link t
+		     'help-echo (format "Link: %s" (cdr (assoc 'url entry))))
+      (arxiv-insert-with-face "\n\n" '(arxiv-title-face (:height 1.2)))
+      ;; (arxiv-insert-with-face (format "\n%s\n\n" (cdr (assoc 'title entry))) '(arxiv-title-face (:height 1.2 :weight semi-bold)))
       ;; author list
       (let ((authors (cdr (assoc 'authors entry))))
 	(dolist (author authors)
-	  (arxiv-insert-with-face (format "%s" author) '(arxiv-author-face (:height 1.1 :underline t)))
+	  (insert-button (format "%s" author)
+			 'action (lambda (x) (arxiv-show-hide-abstract) (arxiv-read-author author))
+			 'follow-link t
+			 'face '(arxiv-author-face (:height 1.1 :underline t))
+			 'mouse-face 'highlight
+			 'help-echo (format "Look up author: %s" author))
+	  ;; (arxiv-insert-with-face (format "%s" author) '(arxiv-author-face (:height 1.1 :underline t)) 'mouse-face 'highlight 'help-echo (format "Look up papers from author: %s." author))
 	  (insert ", ")))
       (delete-char -2)
       (insert "\n\n")
@@ -460,20 +476,18 @@ year = {%s}" key title authors abstract id url year))
      ((equal day 1) ; Monday
       (progn
 	(setq date-start (format-time-string "%Y%m%d%H%M" (time-subtract time (* 3 86400)) "UTC"))
-	(setq date-end (format-time-string "%Y%m%d%H%M" time TZ))
+	(setq date-end (format-time-string "%Y%m%d%H%M" time "UTC"))
 	(setq dayname-start "Fri")
 	(setq dayname-end "Mon")))
      (t ; Tue - Thu, read from previous day
       (progn
 	(setq date-start (format-time-string "%Y%m%d%H%M" (time-subtract time 86400) "UTC"))
-	(setq date-end (format-time-string "%Y%m%d%H%M" time TZ))
+	(setq date-end (format-time-string "%Y%m%d%H%M" time "UTC"))
 	(setq dayname-start (format-time-string "%a" (time-subtract time 86400) "UTC"))
-	(setq dayname-end (format-time-string "%a" time TZ)))))
+	(setq dayname-end (format-time-string "%a" time "UTC")))))
     ;; day to week name
     (setq arxiv-query-info (format " Showing new submissions in %s from %s(%s) to %s(%s)."
-				   category date-start dayname-start date-end dayname-end))
-    ;; (setq date-start (concat date-start "1400"))
-    ;; (setq date-end (concat date-end "1400"))
+				   category (substring date-start 0 7) dayname-start (substring date-end 0 7) dayname-end))
     (setq arxiv-entry-list (arxiv-query category date-start date-end nil t))
     (setq arxiv-query-data-list `((date-start . ,date-start) (date-end . ,date-end) (category . ,category)))
     (setq arxiv-mode-entry-function 'arxiv-read-new)
@@ -481,11 +495,11 @@ year = {%s}" key title authors abstract id url year))
 
 ;;;###autoload
 (defun arxiv-read-recent ()
-  "read recent (past week) submissions of arXiv in a given category."
+  "Read recent (past week) submissions of arXiv in a given category."
   (interactive)
   (let*
-      ((date-start (format-time-string "%Y%m%d" (org-read-date nil t "-7")))
-       (date-end (format-time-string "%Y%m%d" (org-read-date nil t "")))
+      ((date-end (format-time-string "%Y%m%d" (current-time)))
+       (date-start (format-time-string "%Y%m%d" (time-subtract (current-time) (* 7 86400))))
        (category (completing-read "Select category: "
 				  arxiv-categories nil t nil nil arxiv-default-category)))
     (setq arxiv-query-info (format " Showing recent submissions in %s in the past week (%s to %s)." category date-start date-end))
@@ -497,14 +511,16 @@ year = {%s}" key title authors abstract id url year))
     (arxiv-populate-page)))
 
 ;;;###autoload
-(defun arxiv-read-author ()
-  "Find the papers by author name."
+(defun arxiv-read-author (&optional author)
+  "Find the papers by author name in category supplied by user. 
+If AUTHOR is non-nil, find papers by author in all categories."
   (interactive)
-  (let*
-      ((author (read-string "Authors name (use space to seperate): "))
-       (category (completing-read "Select category: "
-				  arxiv-categories nil t nil nil arxiv-default-category)))
+  (let ((category nil))
+    (unless author
+      (setq author (read-string "Authors name (use space to separate): "))
+      (setq category (completing-read "Select category: " arxiv-categories nil t nil nil arxiv-default-category)))
     (setq arxiv-entry-list (arxiv-query-author author category))
+    (setq category (or category "all"))
     (setq arxiv-query-info (format " Showing results for author(s): %s in categroy %s." author category))
     (setq arxiv-query-data-list `((author . ,author) (category . ,category)))
     (setq arxiv-mode-entry-function 'arxiv-read-author)
@@ -579,8 +595,8 @@ Do exclusive update if condition is nil. Also updates arxiv-query-info."
 	    (setq temp-query-info (concat temp-query-info "comment:" context))))
 	 ((eq field 'time)
 	  (let
-	      ((date-min (replace-regexp-in-string "-" "" (org-read-date nil nil nil "Enter starting date")))
-	       (date-max (replace-regexp-in-string "-" "" (org-read-date nil nil nil "Enter ending date"))))
+	      ((date-min (read-string "Enter starting date (YYYYMMDD, ex: 19910101): "))
+	       (date-max (read-string "Enter ending date (YYYYMMDD, ex: 19910101): ")))
 	    (setq context (format "[%s0000+TO+%s0000]" date-min date-max))
 	    (setq temp-query-info (concat temp-query-info "time:" (format "%s-%s" date-min date-max))))))
 	(if (string-match "^ *$" context)

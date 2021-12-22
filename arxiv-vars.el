@@ -227,6 +227,12 @@ context is a string seperated by quotes and spaces.")
   :group 'arxiv-preferences
   :type 'integer)
 
+(defcustom arxiv-author-list-maximum 10
+  "Maximum number of authors shown per entry on the article list.
+0 means no maximum limit."
+  :group 'arxiv-preferences
+  :type 'integer)
+
 (defcustom arxiv-default-category "hep-th"
   "Default search category when using arxiv-read."
   :group 'arxiv-preferences
