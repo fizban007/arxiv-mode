@@ -377,13 +377,14 @@ arxiv-entries-per-fetch) and fill the results into buffer."
       (arxiv-insert-with-face (format "\nSubmitted: %s" (cdr (assoc 'date entry))) arxiv-subfield-face)
       (arxiv-insert-with-face (format "\nUpdated: %s" (cdr (assoc 'updated entry))) arxiv-subfield-face))))
 
-(defun arxiv-export-bibtex (&optional pdfpath)
-  "Add a new bibtex item to a .bib file according to the current
-arxiv entry. This function is a part of arXiv mode. You can
-customize the default .bib file by customizing the
-arxiv-default-bibliography variable. This function is not related
-to the arxiv-add-bibtex-entry in org-ref package."
-  (interactive)
+(defun arxiv-export-bibtex-to-string (&optional pdfpath)
+  "Generate a bibtex entry according to the current arxiv entry. It
+will return a string buffer containing the bibtex entry. This
+function is a part of arXiv mode, and is supposed to be called by
+arxiv-export-bibtex or arxiv-export-bibtex-to-buffer. This
+function is not related to the arxiv-add-bibtex-entry in org-ref
+package."
+  ;; (interactive)
   (let*
       ((entry (nth arxiv-current-entry arxiv-entry-list))
        (title (cdr (assoc 'title entry)))
@@ -429,6 +430,17 @@ year = {%s}" key title authors abstract id url year))
     (when pdfpath
       (setq bibtex-info (concat bibtex-info (format ",\nfile = {:%s:pdf}" (expand-file-name pdfpath)))))
     (setq bibtex-info (concat bibtex-info "\n}"))
+    bibtex-info))
+
+(defun arxiv-export-bibtex (&optional pdfpath)
+  "Add a new bibtex item to a .bib file according to the current
+arxiv entry. This function is a part of arXiv mode. You can
+customize the default .bib file by customizing the
+arxiv-default-bibliography variable. This function is not related
+to the arxiv-add-bibtex-entry in org-ref package."
+  (interactive)
+  (progn
+    (setq bibtex-info (arxiv-export-bibtex-to-string pdfpath))
     (setq bibfile (read-file-name "export to bibliography file: " nil nil t (expand-file-name arxiv-default-bibliography)))
     (save-window-excursion
       (find-file bibfile)
