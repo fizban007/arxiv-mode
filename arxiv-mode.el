@@ -1,19 +1,64 @@
 ;;; arxiv-mode.el --- read and search for articles on arXiv.org  -*- lexical-binding: t; -*-
 
+;; Copyright (C) 2021 Alex Chen, Simon Lin
+
 ;; Author: Alex Chen (fizban007) <fizban007@gmail.com>
 ;;         Simon Lin (Simon-Lin) <n.sibetz@gmail.com>
 ;;
 ;; Version: 0.3.0
 ;;
 ;; Package-Requires: ((hydra "0.15.0"))
-
+;;
 ;; This software is distributed under GPL license
 
 ;;; Commentary:
+;;
+;; arxiv-mode is an emacs major mode for viewing 
+;; updates on arXiv.org.
+;;
+;;
+;; Common Usage
+;; ============
+;;
+;; arxiv-mode provides many functions for accessing arXiv.org.
+;; To browse the daily new submissions list in a category, run `M-x arxiv-read-new`.
+;; To browse the recent (weekly) submissions, run `M-x arxiv-read-recent`.
+;; Use `M-x arxiv-read-author` to search for specific author(s).
+;; Use `M-x arxiv-search` to perform a simple search on the arXiv database.
+;;
+;; For more complicated searches, use `M-x arxiv-complex-search`.
+;; This command allows user to dynamically refine and modify search conditions.
+;; You can also use `r` to refine search condition in the abstract list obtained from a search.
+;;
+;; In the article list, use `n` and `p` to navigate the article list.
+;; Press `SPC` to toggle visibility of the abstract window.
+;; Press `RET` to open the entry in a web browser. Press `d` to download the pdf.
+;; Press `b` to export the bibtex entry of current paper to your specified .bib file.
+;; Press `B` to export the bibtex entry to a new buffer.
+;; Press `e` to download pdf and add a bibtex entry with a link to the actual pdf file.
+;;
+;; All available commands are listed in a hydra help menu accessable by `?` whenever you are in the article list.
+;;
+;;
+;; Installation
+;; ============
+;;
+;; Just put the directory in your filesystem and at it to your
+;; `load-path`. Put the following into your `.emacs` file
+;; 
+;; (require 'arxiv-mode)
+;;
+;;
+;; Customization
+;; =============
+;;
+;; Run `M-x arxiv-customize` to customize or set the customization variables directly.
+
+
+
 
 ;;; Code:
 
-;; (require 'overlay)
 (require 'button)
 (require 'hydra)
 (require 'arxiv-vars)
@@ -28,6 +73,7 @@
     (define-key map (kbd "d") 'arxiv-download-pdf)
     (define-key map (kbd "e") 'arxiv-download-pdf-export-bibtex)
     (define-key map (kbd "b") 'arxiv-export-bibtex)
+    (define-key map (kbd "B") 'arxiv-export-bibtex-to-buffer)
     (define-key map (kbd "r") 'arxiv-refine-search)
     (define-key map (kbd "q") 'arxiv-exit)
     (define-key map (kbd "?") 'arxiv-help-menu/body)
@@ -55,6 +101,7 @@ Type ? to invoke major commands."
     (define-key map (kbd "d") 'arxiv-download-pdf)
     (define-key map (kbd "e") 'arxiv-download-pdf-export-bibtex)
     (define-key map (kbd "b") 'arxiv-export-bibtex)
+    (define-key map (kbd "B") 'arxiv-export-bibtex-to-buffer)
     (define-key map (kbd "q") 'arxiv-exit)
     map))
 
@@ -169,7 +216,7 @@ user with opening file."
       (arxiv-abstract-mode)
       (setq-local prettify-symbols-alist arxiv-abstract-prettify-symbols-alist)
       (prettify-symbols-mode 1)))
-  (unless arxiv-abstract-window
+  (unless (window-live-p arxiv-abstract-window)
     (setq arxiv-abstract-window (display-buffer "*arXiv-abstract*" t)))
   (arxiv-format-abstract-page (nth arxiv-current-entry arxiv-entry-list)))
   
@@ -178,7 +225,7 @@ user with opening file."
 does not exist, then create it and display appropriate content,
 otherwise kill it."
   (interactive)
-  (if arxiv-abstract-window
+  (if (window-live-p arxiv-abstract-window)
       (with-selected-window arxiv-abstract-window
         (delete-window)
         (setq arxiv-abstract-window nil))
@@ -196,7 +243,7 @@ arxiv-toggle-abstract."
 (defun arxiv-exit ()
   "Exit from the arXiv mode, deleting all relevant buffers."
   (interactive)
-  (when arxiv-abstract-window
+  (when (window-live-p arxiv-abstract-window)
     (quit-restore-window arxiv-abstract-window 'kill)
     (setq arxiv-abstract-window nil))
   (kill-buffer "*arXiv-update*")

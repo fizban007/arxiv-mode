@@ -22,6 +22,7 @@ In the article list, use `n` and `p` to navigate the article list.
 Press `SPC` to toggle visibility of the abstract window.
 Press `RET` to open the entry in a web browser. Press `d` to download the pdf.
 Press `b` to export the bibtex entry of current paper to your specified .bib file.
+Press `B` to export the bibtex entry to a new buffer.
 Press `e` to download pdf and add a bibtex entry with a link to the actual pdf file.
 
 All available commands are listed in a hydra help menu accessable by `?` whenever you are in the article list.
