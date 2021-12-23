@@ -450,6 +450,24 @@ to the arxiv-add-bibtex-entry in org-ref package."
       (when (not (looking-at "^")) (insert "\n"))
       (save-buffer))))
 
+(defun arxiv-export-bibtex-to-buffer (&optional pdfpath)
+  "Export a bibtex item for the current arXiv entry, and display it
+in a temporary buffer. This function is a part of arXiv mode, and
+is not related to the arxiv-add-bibtex-entry in org-ref package."
+  (interactive)
+  (let
+      ((bibtex-info (arxiv-export-bibtex-to-string pdfpath)))
+    (select-window arxiv-abstract-window)
+    ;; (split-window-below)
+    ;; (select-window (next-window))
+    (pop-to-buffer-same-window "*arXiv-bibTeX*")
+    (erase-buffer)
+    (insert bibtex-info)
+    (setq buffer-read-only nil)
+    (bibtex-mode)
+    (bibtex-set-dialect 'BibTeX t)
+      ))
+
 (defun arxiv-download-pdf-export-bibtex ()
   "Download the pdf file of the current entry and export a bibtex entry to the selected bibtex file."
   (interactive)
