@@ -31,7 +31,7 @@ replace space by + and \" to %22"
   "get the API url according to the arxiv-query-data-list.
 When using this function, make sure that the first item of the list has t condition."
   (unless start (setq start 0))
-  (unless max-num (setq max-num arxiv-entries-per-page))
+  (unless max-num (setq max-num arxiv-entries-per-fetch))
   (let ((url (format "%s?search_query=" arxiv-url))
 	(parsed-query nil)
 	(body nil))
@@ -61,7 +61,7 @@ If ASCENDING is t then sort the list by ascending order instead of descending."
   (unless start
     (setq start 0))  ; Start with the first result
   (unless max-num
-    (setq max-num arxiv-entries-per-page))
+    (setq max-num arxiv-entries-per-fetch))
   (if ascending
       (setq ascending "ascending")
     (setq ascending "descending"))
@@ -73,7 +73,7 @@ If ASCENDING is t then sort the list by ascending order instead of descending."
   (unless start
     (setq start 0))  ; Start with the first result
   (unless max-num
-    (setq max-num arxiv-entries-per-page))
+    (setq max-num arxiv-entries-per-fetch))
   (setq author (replace-regexp-in-string " " "+" author))
   (setq author (replace-regexp-in-string "\"" "%22" author))
   (if category

@@ -31,6 +31,7 @@
     (define-key map (kbd "r") 'arxiv-refine-search)
     (define-key map (kbd "q") 'arxiv-exit)
     (define-key map (kbd "?") 'arxiv-help-menu/body)
+    (define-key map (kbd "<mouse-1>") 'arxiv-click-select-entry)
     map))
 
 (define-derived-mode arxiv-mode special-mode "arXiv"
@@ -41,7 +42,7 @@ Type ? to invoke major commands."
   :group 'arxiv
   (setq header-line-format '(:eval (arxiv-headerline-format)))
   (setq arxiv-highlight-overlay (make-overlay 1 1))
-  (overlay-put arxiv-highlight-overlay 'face 'highlight)
+  (overlay-put arxiv-highlight-overlay 'face '(:inherit highlight :extend t))
   (if arxiv-use-variable-pitch
       (variable-pitch-mode 1)
     (variable-pitch-mode -1))
@@ -50,7 +51,7 @@ Type ? to invoke major commands."
 (defvar arxiv-abstract-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'arxiv-open-current-url)
-    (define-key map (kbd "SPC") 'arxiv-show-hide-abstract)
+    (define-key map (kbd "SPC") 'arxiv-toggle-abstract)
     (define-key map (kbd "d") 'arxiv-download-pdf)
     (define-key map (kbd "e") 'arxiv-download-pdf-export-bibtex)
     (define-key map (kbd "b") 'arxiv-export-bibtex)
@@ -65,7 +66,7 @@ Type ? to invoke major commands."
 )
 
 (defun arxiv-insert-with-face (string face-property)
-  "wrapper function to insert a string with given face property."
+  "Wrapper function to insert STRING with given FACE-PROPERTY."
   (insert (propertize string 'font-lock-face face-property)))
 
 ;; (defun arxiv-get-plist ()
@@ -73,7 +74,8 @@ Type ? to invoke major commands."
 ;;   (print (text-properties-at (point))))
 
 (defun arxiv-next-entry (&optional arg)
-  "Move to the next arXiv entry"
+  "Move to the next arXiv entry.
+With ARG, move to the next nth entry."
   (interactive "P")
   (setq arxiv-current-entry (+ arxiv-current-entry (prefix-numeric-value arg)))
   (let ((len (- (safe-length arxiv-entry-list) 1)))
@@ -92,7 +94,8 @@ Type ? to invoke major commands."
     (arxiv-show-abstract)))
 
 (defun arxiv-prev-entry (&optional arg)
-  "Move to the previous arXiv entry"
+  "Move to the previous arXiv entry.
+With ARG, move to the previous nth entry."
   (interactive "P")
   (setq arxiv-current-entry (- arxiv-current-entry (prefix-numeric-value arg)))
   (when (< arxiv-current-entry 0)
@@ -107,7 +110,7 @@ Type ? to invoke major commands."
     (arxiv-show-abstract)))
 
 (defun arxiv-select-entry ()
-    "Select the entry to which the cursor is pointing to"
+    "Select the entry to which the cursor is pointing to."
     (interactive)
     (setq arxiv-current-entry (/ (line-number-at-pos) 4))
     (goto-char (point-min))
@@ -118,6 +121,13 @@ Type ? to invoke major commands."
     (when arxiv-abstract-window
       (arxiv-show-abstract)))
 
+(defun arxiv-click-select-entry (ev)
+  "Select the entropy to which the mouse pointer is currently at."
+  (interactive "e")
+  (mouse-set-point ev)
+  (arxiv-select-entry)
+  (arxiv-show-abstract))
+
 (defun arxiv-open-current-url ()
   "Open the webpage for the current highlighted paper entry."
   (interactive)
@@ -127,9 +137,10 @@ Type ? to invoke major commands."
 
 (defun arxiv-download-pdf (&optional confirm)
   "Download and save the highlighted paper to desired folder.
-Return the path of the saved pdf file.
-You can change the default folder by customizing the variable arxiv-default-download-folder.
-If the optional argument is t, don't prompt the user with opening file."
+Return the path of the saved pdf file.  You can change the
+default folder by customizing the variable
+arxiv-default-download-folder.  If CONFIRM is t, don't prompt the
+user with opening file."
   (interactive)
   (let ((url (cdr (assoc 'pdf (nth arxiv-current-entry arxiv-entry-list))))
 	(newfile) (pdfname) (input))
@@ -147,27 +158,26 @@ If the optional argument is t, don't prompt the user with opening file."
     newfile))
 
 (defun arxiv-customize ()
-  "Customize the arxiv-mode"
+  "Customize the arxiv-mode."
   (interactive)
   (customize-group 'arxiv))
 
 (defun arxiv-show-abstract ()
+  "Show the abstract window and display appropriate information."
+  (unless arxiv-abstract-buffer
+    (setq arxiv-abstract-buffer (get-buffer-create "*arXiv-abstract*"))
+    (with-current-buffer arxiv-abstract-buffer
+      (arxiv-abstract-mode)
+      (setq-local prettify-symbols-alist arxiv-abstract-prettify-symbols-alist)
+      (prettify-symbols-mode 1)))
   (unless arxiv-abstract-window
-    (setq arxiv-abstract-window (split-window-right)))
-  (setq arxiv-abstract-buffer (get-buffer-create "*arXiv-abstract*"))
-  (with-selected-window arxiv-abstract-window
-    (switch-to-buffer arxiv-abstract-buffer)
-    ;; (set-buffer arxiv-abstract-buffer)
-    (arxiv-abstract-mode)
-    (arxiv-format-abstract-page (nth arxiv-current-entry arxiv-entry-list))
-    (setq-local prettify-symbols-alist arxiv-abstract-prettify-symbols-alist)
-    (prettify-symbols-mode 1)
-    (setq header-line-format (format " arXiv:%s" (cdr (assoc 'id (nth arxiv-current-entry arxiv-entry-list)))))))
+    (setq arxiv-abstract-window (display-buffer "*arXiv-abstract*" t)))
+  (arxiv-format-abstract-page (nth arxiv-current-entry arxiv-entry-list)))
   
-(defun arxiv-show-hide-abstract (&optional arg)
+(defun arxiv-toggle-abstract ()
   "Toggle the visibility of the abstract. If the abstract window
-  does not exist, then create it and display appropriate content,
-  otherwise kill it."
+does not exist, then create it and display appropriate content,
+otherwise kill it."
   (interactive)
   (if arxiv-abstract-window
       (with-selected-window arxiv-abstract-window
@@ -176,27 +186,28 @@ If the optional argument is t, don't prompt the user with opening file."
     (arxiv-show-abstract)))
 
 (defun arxiv-SPC ()
-  "If the cursor position does not correspond to the current entry, 
-  move the current entry to the corresponding position. Otherwise call
-  arxiv-show-hide-abstract."
+  "If the cursor position does not correspond to the current entry,
+move the current entry to the corresponding position. Otherwise call
+arxiv-toggle-abstract."
   (interactive)
   (if (eq (/ (line-number-at-pos) 4) arxiv-current-entry)
-      (arxiv-show-hide-abstract)
+      (arxiv-toggle-abstract)
     (arxiv-select-entry)))
 
-(defun arxiv-exit (&optional arg)
+(defun arxiv-exit ()
   "Exit from the arXiv mode, deleting all relevant buffers."
   (interactive)
   (when arxiv-abstract-window
-    (delete-window arxiv-abstract-window)
+    (quit-restore-window arxiv-abstract-window 'kill)
     (setq arxiv-abstract-window nil))
   (kill-buffer "*arXiv-update*")
   (when (get-buffer "*arXiv-abstract*")
-    (kill-buffer "*arXiv-abstract*")))
+    (kill-buffer "*arXiv-abstract*"))
+  (setq arxiv-abstract-buffer nil))
 
 
 (defun arxiv-headerline-format ()
-  "update the header line of *arxiv-update* buffer."
+  "Update the header line of *arxiv-update* buffer."
   (let* ((entry (format "%d/%d" (+ 1 arxiv-current-entry) arxiv-query-total-results))
 	 (info-width (- (window-total-width) (length entry) 2)))
     (list
@@ -209,7 +220,7 @@ If the optional argument is t, don't prompt the user with opening file."
 
 (defun arxiv-fill-page (&optional min-entry max-entry)
   "Fill (insert) the details of the article list according to arxiv-entry-list.
-If min-entry and max-entry are ignored, defaults to fill with the whole arxiv-entry-list."
+If MIN-ENTRY and MAX-ENTRY are ignored, defaults to fill with the whole arxiv-entry-list."
   (unless min-entry
     (setq min-entry 0))
   (let ((arxiv-entry-list-trun (seq-subseq arxiv-entry-list min-entry max-entry))) ; if max is omitted it defaults to be len(list)
@@ -255,15 +266,18 @@ If min-entry and max-entry are ignored, defaults to fill with the whole arxiv-en
 	  (goto-char (point-min))
 	  (message "Showing results %d-%d of %d" arxiv-query-results-min arxiv-query-results-max arxiv-query-total-results)
 	  (setq buffer-read-only t))
-	(switch-to-buffer arxiv-buffer))
+	(switch-to-buffer arxiv-buffer)
+	(when arxiv-startup-with-abstract-window
+	  (arxiv-show-abstract)))
     (message "No articles matching the search condition.")))
 
 (defun arxiv-show-next-page (&optional arxiv-buffer)
-  "Perform one more query (according to arxiv-current-entry and arxiv-entries-per-page) and fill the results into buffer."
+  "Perform one more query (according to arxiv-current-entry and
+arxiv-entries-per-fetch) and fill the results into buffer."
   (unless arxiv-buffer
     (setq arxiv-buffer (get-buffer "*arXiv-update*")))
-  (let* ((min (* arxiv-entries-per-page (/ (+ 1 arxiv-current-entry) arxiv-entries-per-page)))
-	 (max (+ min arxiv-entries-per-page)))
+  (let* ((min (* arxiv-entries-per-fetch (/ (+ 1 arxiv-current-entry) arxiv-entries-per-fetch)))
+	 (max (+ min arxiv-entries-per-fetch)))
     (when (> max arxiv-query-total-results)
       (setq max arxiv-query-total-results))
     (message "Fetching results %d-%d..." (+ 1 min) max)
@@ -297,7 +311,12 @@ If min-entry and max-entry are ignored, defaults to fill with the whole arxiv-en
     (setq buffer-read-only t)))
 
 (defun arxiv-format-abstract-page (entry)
+  "Format the arxiv abstract page according to ENTRY."
   (with-current-buffer arxiv-abstract-buffer
+    ;; header-line
+    (setq header-line-format (format " arXiv:%s" (cdr (assoc 'id entry))))
+    
+    ;;contents
     (let ((buffer-read-only nil))
       (erase-buffer)
       ;; title
@@ -314,7 +333,7 @@ If min-entry and max-entry are ignored, defaults to fill with the whole arxiv-en
       (let ((authors (cdr (assoc 'authors entry))))
 	(dolist (author authors)
 	  (insert-button (format "%s" author)
-			 'action (lambda (x) (arxiv-show-hide-abstract) (arxiv-read-author author))
+			 'action (lambda (x) (arxiv-toggle-abstract) (arxiv-read-author author))
 			 'follow-link t
 			 'face '(arxiv-author-face (:height 1.1 :underline t))
 			 'mouse-face 'highlight
@@ -341,13 +360,13 @@ If min-entry and max-entry are ignored, defaults to fill with the whole arxiv-en
       (let* ((main-cat t) (cats (cdr (assoc 'categories entry))))
 	(dolist (cat cats)
 	  (let (field)
-	    (setq field (symbol-name (cdr (assoc (intern-soft cat) arxiv-subject-classifications))))
+	    (setq field (cdr (assoc (intern-soft cat) arxiv-subject-classifications)))
 	    (if main-cat
 		(progn ; the main subject is in bold
-		  (arxiv-insert-with-face (format "%s " (replace-regexp-in-string "_" " " field)) 'arxiv-subfield-face-bold)
+		  (arxiv-insert-with-face (format "%s " field) 'arxiv-subfield-face-bold)
 		  (arxiv-insert-with-face (format "(%s)" cat) 'arxiv-subfield-face-bold)
 		  (setq main-cat nil))
-	      (insert (propertize (format "%s " (replace-regexp-in-string "_" " " field)) 'font-lock-face arxiv-subfield-face 'wrap-prefix "  "))
+	      (insert (propertize (format "%s " field) 'font-lock-face arxiv-subfield-face 'wrap-prefix "  "))
 	      (insert (propertize (format "(%s)" cat) 'font-lock-face arxiv-subfield-face 'wrap-prefix "  ")))
 	    (arxiv-insert-with-face "; " arxiv-subfield-face))))
       (delete-char -2)
@@ -359,10 +378,11 @@ If min-entry and max-entry are ignored, defaults to fill with the whole arxiv-en
       (arxiv-insert-with-face (format "\nUpdated: %s" (cdr (assoc 'updated entry))) arxiv-subfield-face))))
 
 (defun arxiv-export-bibtex (&optional pdfpath)
-  "Add a new bibtex item to a .bib file according to the current arxiv entry.
-This function is a part of arXiv mode.
-You can customize the default .bib file by customizing the arxiv-default-bibliography variable.
-This function is not related to the arxiv-add-bibtex-entry in org-ref package."
+  "Add a new bibtex item to a .bib file according to the current
+arxiv entry. This function is a part of arXiv mode. You can
+customize the default .bib file by customizing the
+arxiv-default-bibliography variable. This function is not related
+to the arxiv-add-bibtex-entry in org-ref package."
   (interactive)
   (let*
       ((entry (nth arxiv-current-entry arxiv-entry-list))
@@ -428,19 +448,21 @@ year = {%s}" key title authors abstract id url year))
 ;; Entry functions
 
 ;;;###autoload
-(defun arxiv-read-new ()
-  "read new (submitted in the previous work day) arXiv articles in a given category."
+(defun arxiv-read-new (&optional cat res-time)
+  "Read new (submitted in the previous work day) arXiv articles in given CAT.
+If CAT is not supplied, prompt user for category.
+With optional arg RES-TIME, read new submission with respective to it."
   (interactive)
   (let*
-      ((time (current-time))
+      ((time (or res-time (current-time)))
        (TZ "EST+5EDT,M3.2.0/2,M11.1.0/2") ;; arXiv (Cornell) is based on eastern time (ET)
        (day (string-to-number (format-time-string "%u" time TZ)))
        (date-start nil)
        (date-end nil)
        (dayname-start "")
        (dayname-end "")
-       (category (completing-read "Select category: "
-				  arxiv-categories nil t nil nil arxiv-default-category)))
+       (category (or cat
+		     (completing-read "Select category: " arxiv-categories nil t nil nil arxiv-default-category))))
     
     ;; arxiv announces new submissions on 20:00 ET. Check if it's 20:00 yet.
     (when (< (string-to-number (format-time-string "%H" time TZ)) 20)
@@ -487,11 +509,15 @@ year = {%s}" key title authors abstract id url year))
 	(setq dayname-end (format-time-string "%a" time "UTC")))))
     ;; day to week name
     (setq arxiv-query-info (format " Showing new submissions in %s from %s(%s) to %s(%s)."
-				   category (substring date-start 0 7) dayname-start (substring date-end 0 7) dayname-end))
+				   category (substring date-start 0 8) dayname-start (substring date-end 0 8) dayname-end))
     (setq arxiv-entry-list (arxiv-query category date-start date-end nil t))
     (setq arxiv-query-data-list `((date-start . ,date-start) (date-end . ,date-end) (category . ,category)))
     (setq arxiv-mode-entry-function 'arxiv-read-new)
-    (arxiv-populate-page)))
+    (if arxiv-entry-list
+	(arxiv-populate-page)
+      (when (y-or-n-p "Could not find any new submissions (this often happens because there is often a slight delay between arXiv's said and actual announcement time).
+Read from previous day instead? ")
+	(arxiv-read-new category (time-subtract (current-time) 86400))))))
 
 ;;;###autoload
 (defun arxiv-read-recent ()
@@ -557,8 +583,9 @@ If AUTHOR is non-nil, find papers by author in all categories."
     (message "Refining search is only available in arxiv-search or arxiv-complex-search.")))
 
 (defun arxiv-query-data-update (field condition)
-  "Ask and update the variable arxiv-query-data-list in the corresponding search field.
-Do exclusive update if condition is nil. Also updates arxiv-query-info."
+  "Ask and update the variable arxiv-query-data-list in the
+corresponding search field. Do exclusive update if condition is
+nil. Also updates arxiv-query-info."
   (if (or condition arxiv-query-data-list)      
       (let ((temp-query-info) (context))
 	(if condition
@@ -607,7 +634,7 @@ Do exclusive update if condition is nil. Also updates arxiv-query-info."
   (arxiv-search-menu/body))
 
 (defun arxiv-hydra-perform-search ()
-  "helper function for arxiv-search-menu()."
+  "Helper function for arxiv-search-menu."
   (interactive)
   (if arxiv-query-data-list
       (progn
