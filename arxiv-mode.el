@@ -62,8 +62,7 @@ Type ? to invoke major commands."
   "Major mode for reading arXiv abstracts."
   (if arxiv-use-variable-pitch
       (variable-pitch-mode 1)
-    (variable-pitch-mode -1))
-)
+    (variable-pitch-mode -1)))
 
 (defun arxiv-insert-with-face (string face-property)
   "Wrapper function to insert STRING with given FACE-PROPERTY."
