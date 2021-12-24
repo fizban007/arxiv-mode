@@ -43,12 +43,12 @@ Run `M-x arxiv-customize` to customize or set the customization variables direct
 ### appearance
 The variable `arxiv-use-variable-pitch` decides whether to use monospace fonts or variable pitch fonts to display the contents of arxiv mode.
 You can also set the relevant faces (faces start with `arxiv-`) directly.
-The variable `arxiv-entries-per-fetch` sets the maximum number of articles arxiv-mode will try to query each time from arxiv.org (Note that setting this number too high will cause emacs to stutter).
 The variable `arxiv-author-list-maximum` sets the maximum number of authors to display in the query list.
 
 ### behavior
 If you set `arxiv-startup-with-abstract-window` to `t`, arxiv-mode will default to startup with the abstract window open instead of a plain query list.
 The default category used for query can be set by changing the variable `arxiv-default-category`.
+The variable `arxiv-entries-per-fetch` sets the maximum number of articles arxiv-mode will try to query each time from arxiv.org (Note that setting this number too high will cause emacs to stutter).
 
 ### download and export
 By default, arxiv-mode will save downloaded PDFs to `~/Downloads` folder. You can change the folder by setting the variable `arxiv-default-download-folder`.
@@ -57,7 +57,7 @@ For example, to open in Preview.app in macOS:
 ````lisp
   (setq arxiv-pdf-open-function (lambda (fpath) (call-process "open" nil 0 nil "-a" "/Applications/Preview.app" fpath)))
 ````
-arxiv-mode will default export the bibtex entry of paper to the file `arxiv-default-bibliography`.
+arxiv-mode will default to export the bibtex entry of paper to file `arxiv-default-bibliography`.
 
 
 

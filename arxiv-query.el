@@ -1,5 +1,24 @@
 ;;; arxiv-query.el --- arXiv query functions  -*- lexical-binding: t; -*-
 
+;; This program is free software; you can redistribute it and/or
+;; modify it under the terms of the GNU General Public License as
+;; published by the Free Software Foundation; either version 2, or
+;; (at your option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+;; General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with this program; see the file COPYING.  If not, write to
+;; the Free Software Foundation, Inc., 51 Franklin Street, Fifth
+;; Floor, Boston, MA 02110-1301, USA.
+
+;;; Commentary:
+
+;;; Code:
+
 (require 'xml)
 
 ;; URL of the arXiv api
@@ -8,30 +27,30 @@
 (setq arxiv-query-total-results nil)
 
 (defun arxiv-extract-pdf (my-list)
-  "Function for extracting the url for pdf file recursively"
+  "Extract the url for pdf file recursively from MY-LIST."
   (if my-list
       (let* ((sub-list (car (cdr (car my-list))))
              (sub-title (cdr (assoc 'title sub-list))))
         ;; (message "%S\n :%S" sub-list sub-title)
         (if (and sub-title (equal sub-title "pdf"))
-            (progn 
+            (progn
               ;; (message sub-title)
               (cdr (assoc 'href sub-list)))
           (arxiv-extract-pdf (cdr my-list))))))
 
 (defun arxiv-parse-query-data (query-string)
-  "Helper function to parse the input search data to pre-api form.
-replace space by + and \" to %22"
+  "Parse the input search data (QUERY-STRING) to pre-api form.
+In particular, replace space by + and \" to %22"
   (setq query-string (replace-regexp-in-string "\\(^ +\\| +$\\)" "" query-string))
-  (setq query-string (replace-regexp-in-string " +" "+" query-string))    
+  (setq query-string (replace-regexp-in-string " +" "+" query-string))
   (setq query-string (replace-regexp-in-string "\"" "%22" query-string))
   query-string)
 
-(defun arxiv-get-api-url (&optional start max-num)
-  "get the API url according to the arxiv-query-data-list.
+(defun arxiv-get-api-url (&optional start)
+  "Get the API url according to the `arxiv-query-data-list'.
+START specifies starting index (default 0).
 When using this function, make sure that the first item of the list has t condition."
   (unless start (setq start 0))
-  (unless max-num (setq max-num arxiv-entries-per-fetch))
   (let ((url (format "%s?search_query=" arxiv-url))
 	(parsed-query nil)
 	(body nil))
@@ -53,41 +72,40 @@ When using this function, make sure that the first item of the list has t condit
 	 ((eq field 'journal) (setq url (concat url "jr:")))
 	 ((eq field 'category) (setq url (concat url "cat:"))))
 	(setq url (concat url (arxiv-parse-query-data (nth 2 query-data))))))
-    (setq url (concat url (format "&start=%d&max_results=%d" start max-num)))))
+    (setq url (concat url (format "&start=%d&max_results=%d" start arxiv-entries-per-fetch)))))
 
-(defun arxiv-geturl-date (dateStart dateEnd category &optional start max-num ascending)
-  "Get the API url for articles between dateStart and dateEnd in the specified category.
+(defun arxiv-geturl-date (date-start date-end category &optional start ascending)
+  "Get the API url for articles between DATE-START and DATE-END in CATEGORY.
+START specifies starting index (default 0).
 If ASCENDING is t then sort the list by ascending order instead of descending."
   (unless start
     (setq start 0))  ; Start with the first result
-  (unless max-num
-    (setq max-num arxiv-entries-per-fetch))
   (if ascending
       (setq ascending "ascending")
     (setq ascending "descending"))
-  (format "%s?search_query=submittedDate:[%s+TO+%s]+AND+cat:%s*&sortBy=submittedDate&sortOrder=%s&start=%d&max_results=%d" 
-              arxiv-url dateStart dateEnd category ascending start max-num))
+  (format "%s?search_query=submittedDate:[%s+TO+%s]+AND+cat:%s*&sortBy=submittedDate&sortOrder=%s&start=%d&max_results=%d"
+              arxiv-url date-start date-end category ascending start arxiv-entries-per-fetch))
 
-(defun arxiv-geturl-author (author &optional category start max-num)
-  "get the API url for articles by certain author."
+(defun arxiv-geturl-author (author &optional category start)
+  "Get the API url for articles used by `arxiv-read-author'.
+AUTHOR and CATEGORY specifies search fields.
+START specifies starting index (default 0)."
   (unless start
     (setq start 0))  ; Start with the first result
-  (unless max-num
-    (setq max-num arxiv-entries-per-fetch))
   (setq author (replace-regexp-in-string " " "+" author))
   (setq author (replace-regexp-in-string "\"" "%22" author))
   (if category
       (format "%s?search_query=au:%s+AND+cat:%s*&start=%d&max_results=%d"
-	      arxiv-url author category start max-num)
+	      arxiv-url author category start arxiv-entries-per-fetch)
     (format "%s?search_query=au:%s&start=%d&max_results=%d"
-	      arxiv-url author start max-num)))  
+	      arxiv-url author start arxiv-entries-per-fetch)))
 
 (defun arxiv-getxml-context (node child-name)
-  "wrapper to get the context of the node directly."
+  "xml helper to get the context of CHILD-NAME from NODE directly."
   (car (xml-node-children (car (xml-get-children node child-name)))))
 
 (defun arxiv-parse-api (url)
-  "Call arXiv api url and parse its response.
+  "Call arXiv api (at URL) and parse its response.
 Return a alist with various fields."
   (with-current-buffer (url-retrieve-synchronously url)
     (set-buffer-multibyte t) ;; enable utf-8 decoding
@@ -102,7 +120,7 @@ Return a alist with various fields."
 	    (setq arxiv-query-results-min (+ 1 (string-to-number (arxiv-getxml-context root 'opensearch:startIndex))))
 	    (setq arxiv-query-results-max (+ arxiv-query-results-min -1 (string-to-number (arxiv-getxml-context root 'opensearch:itemsPerPage))))
 	    (when (< arxiv-query-total-results arxiv-query-results-max) (setq arxiv-query-results-max arxiv-query-total-results))
-	    (mapcar 
+	    (mapcar
 	     (lambda (paper)
 	       (progn
 		 (setq pdf (arxiv-extract-pdf (xml-get-children paper 'link)))
@@ -132,7 +150,7 @@ Return a alist with various fields."
 				     (date . ,publishdate)
 				     (updated . ,updatedate)
 				     (doi . ,doi)
-				     (comment . ,comment)			   
+				     (comment . ,comment)
 				     (journal . ,journal)
 				     (categories . ,categories)
 				     (pdf . ,pdf)))
@@ -142,21 +160,24 @@ Return a alist with various fields."
 	('error (progn
 		  (switch-to-buffer (get-buffer-create "*arxiv-debug*"))
 		  (print root (get-buffer "*arxiv-debug*"))
-		  (error "Cannot parse the API query result. Refer to the debug buffer for informations.")))))))
+		  (error "Cannot parse the API query result. Refer to the debug buffer for informations")))))))
 
 (defun arxiv-query (cat date-start date-end &optional start ascending)
-  "Query arXiv for articles in a given category submitted between date-start and date-end.
+  "Query for articles in category CAT between DATE-START and DATE-END.
+START specifies starting index (default 0).
 If ASCENDING is t then sort the list by ascending order instead of descending."
   (unless (> (string-to-number date-end) (string-to-number date-start))
-    (user-error "incorrect date specification"))
-  (arxiv-parse-api (arxiv-geturl-date date-start date-end cat start nil ascending)))
+    (user-error "Incorrect date specification"))
+  (arxiv-parse-api (arxiv-geturl-date date-start date-end cat start ascending)))
 
-(defun arxiv-query-author (author &optional cat start ascending)
-  "Query arXiv for articles by certain authors (in a given category)."
+(defun arxiv-query-author (author &optional cat start)
+  "Query arXiv for articles by authors AUTHOR (in category CAT).
+START specifies starting index (default 0)."
   (arxiv-parse-api (arxiv-geturl-author author cat start)))
 
 (defun arxiv-query-general (&optional start)
-  "Do a complex search on arXiv for articles according to the list arxiv-query-data-list."
+  "Do a general query according to the list `arxiv-query-data-list'.
+START specifies starting index (default 0)."
   (arxiv-parse-api (arxiv-get-api-url start)))
 
 (provide 'arxiv-query)

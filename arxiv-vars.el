@@ -1,5 +1,24 @@
 ;;; arxiv-vars.el --- Defining the common variables for arxiv-mode  -*- lexical-binding: t; -*-
 
+;; This program is free software; you can redistribute it and/or
+;; modify it under the terms of the GNU General Public License as
+;; published by the Free Software Foundation; either version 2, or
+;; (at your option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+;; General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with this program; see the file COPYING.  If not, write to
+;; the Free Software Foundation, Inc., 51 Franklin Street, Fifth
+;; Floor, Boston, MA 02110-1301, USA.
+
+;;; Commentary:
+
+;;; Code:
+
 (defgroup arxiv nil
   "A mode for reading arXiv abstracts"
   :prefix "arxiv-"
@@ -14,11 +33,10 @@
   :group 'arxiv)
 
 (defvar arxiv-mode-hook nil
-  "A list of functions to call when entering arxiv-mode.")
+  "A list of functions to call when entering `arxiv-mode'.")
 
-;; (defvar arxiv-mode-map nil
-;;   "Key map for arxiv-mode.")
-
+(defvar arxiv-abstract-mode-hook nil
+  "A list of functions to call when entering `arxiv-abstract-mode'.")
 
 (defvar arxiv-buffer nil
   "Current buffer for viewing arXiv updates.")
@@ -45,9 +63,10 @@
   "Current maxmum entry of query result.")
 
 (defvar arxiv-query-data-list nil
-  "list of current query data. 
+  "List of current query data.
 Elements of this list must have the form (field condition context)
-Available fields are 'all, 'id, 'time, 'title, 'author, 'abstract, 'comment, 'journal and 'category
+Available fields are 'all, 'id, 'time, 'title, 'author, 'abstract,
+'comment, 'journal and 'category.
 If condition is nil then the the search excludes the context and vice versa.
 context is a string seperated by quotes and spaces.")
 
@@ -55,7 +74,7 @@ context is a string seperated by quotes and spaces.")
   "A string containing the information of query data displayed in the header line.")
 
 (defvar arxiv-mode-entry-function nil
-  "Variables showing the entry function used to enter arxiv-mode.")
+  "Variables showing the entry function used to enter `arxiv-mode'.")
 
 (defvar arxiv-categories
   '(CoRR cs.AI cs.AR cs.CC cs.CE cs.CG
@@ -84,7 +103,7 @@ context is a string seperated by quotes and spaces.")
          q-fin q-fin.CP q-fin.EC q-fin.GN q-fin.MF q-fin.PM q-fin.PR
          q-fin.RM q-fin.ST q-fin.TR stat stat.AP stat.CO stat.ME stat.ML
          stat.OT stat.TH)
-  "availble categories in arXiv searching")
+  "Availble categories in arXiv searching.")
 
 (defvar arxiv-subject-classifications
   '((cs.AI . "Artificial Intelligence")
@@ -245,12 +264,12 @@ context is a string seperated by quotes and spaces.")
   "arXiv subjects alist for displaying.")
 
 (defcustom arxiv-startup-with-abstract-window nil
-  "Whether to start arXiv mode with an abstract window."
+  "Whether to start `arxiv-mode' with an abstract window."
   :group 'arxiv-preferences
   :type 'boolean)
 
 (defcustom arxiv-use-variable-pitch nil
-  "Whether to use variable pitch fonts in arxiv-mode buffers."
+  "Whether to use variable pitch fonts in `arxiv-mode' buffers."
   :group 'arxiv-preferences
   :type 'boolean)
 
@@ -266,7 +285,7 @@ context is a string seperated by quotes and spaces.")
   :type 'integer)
 
 (defcustom arxiv-default-category "hep-th"
-  "Default search category when using arxiv-read."
+  "Default search category when using `arxiv-read'."
   :group 'arxiv-preferences
   :type 'string
   :options arxiv-categories)
@@ -277,7 +296,7 @@ context is a string seperated by quotes and spaces.")
   :type 'string)
 
 (defcustom arxiv-default-bibliography ""
-  "Default master bibliography file to append for arXiv mode."
+  "Default master bibliography file to append for `arxiv-mode'."
   :group 'arxiv-preferences
   :type 'string)
 
@@ -288,8 +307,8 @@ context is a string seperated by quotes and spaces.")
 
 ;; Defining custom faces
 (defvar arxiv-title-face 'arxiv-title-face)
-(defface arxiv-title-face 
-  '((t (:inherit font-lock-keyword-face :height 1.2)))
+(defface arxiv-title-face
+  '((t (:inherit font-lock-keyword-face)))
   "Face name for article titles in the arXiv article list."
   :group 'arxiv-fontification)
 
@@ -319,36 +338,19 @@ context is a string seperated by quotes and spaces.")
 
 (defvar arxiv-subfield-face 'arxiv-subfield-face)
 (defface arxiv-subfield-face
-  '((t (:inherit default :height 1.0)))
+  '((t (:inherit default)))
   "Face name for subfields (comments, subjects, etc.) in the arXiv abstract viewing window."
-  :group 'arxiv-fontification)
-
-(defvar arxiv-subfield-face-bold 'arxiv-subfield-face-bold)
-(defface arxiv-subfield-face-bold
-  '((t (:inherit arxiv-subfield-face :weight semi-bold)))
-  "This is the bold version of arxiv-subfield-face."
   :group 'arxiv-fontification)
 
 (defvar arxiv-abstract-math-face 'arxiv-abstract-math-face)
 (defface arxiv-abstract-math-face
-  '((t (:inherit font-lock-reference-face :height 1.0 :family "Monospace")))
+  '((t (:inherit font-lock-reference-face :family "Monospace")))
   "Face name for the latex content in abstract in the arXiv
 abstract viewing window."
   :group 'arxiv-fontification)
 
-(defvar arxiv-keyword-list-abstract nil
-  "A list of highlighting keywords for arXiv abstract viewing mode")
-
-(defvar arxiv-abstract-mode-hook nil
-  "A list of functions to call when entering arxiv-abstract-mode.")
-
-(defvar arxiv-abstract-syntax-table nil)
-(setq arxiv-abstract-syntax-table
-      (let ((synTable (make-syntax-table text-mode-syntax-table)))
-
-        ;; bash style comment: “# …” 
-        ;; (modify-syntax-entry ?# "< b" synTable)
-        ;; (modify-syntax-entry ?\n "> b" synTable)
+(defvar arxiv-abstract-syntax-table
+  (let ((synTable (make-syntax-table text-mode-syntax-table)))
         (modify-syntax-entry ?$ "($" synTable)
         (modify-syntax-entry ?$ ")$" synTable)
         synTable))
@@ -816,4 +818,4 @@ abstract viewing window."
 
 (provide 'arxiv-vars)
 
-;; end of arxiv-vars.el
+;;; arxiv-vars.el ends here
