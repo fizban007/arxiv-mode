@@ -300,7 +300,7 @@ context is a string seperated by quotes and spaces.")
   :group 'arxiv-preferences
   :type 'string)
 
-(defcustom arxiv-pdf-open-function 'find-alternate-file-other-window
+(defcustom arxiv-pdf-open-function 'find-file-other-window
   "Default function to open PDF file."
   :group 'arxiv-preferences
   :type 'function)

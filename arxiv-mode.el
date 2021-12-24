@@ -220,7 +220,7 @@ user with opening file."
 
 (defun arxiv-show-abstract ()
   "Show the abstract window and display appropriate information."
-  (unless arxiv-abstract-buffer
+  (unless (buffer-live-p arxiv-abstract-buffer)
     (setq arxiv-abstract-buffer (get-buffer-create "*arXiv-abstract*"))
     (with-current-buffer arxiv-abstract-buffer
       (arxiv-abstract-mode)
