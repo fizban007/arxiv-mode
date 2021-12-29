@@ -382,7 +382,7 @@ Automatically finds ARXIV-BUFFER if it is not specified."
       (arxiv-insert-with-face "\n" '(arxiv-title-face (:height 1.2)))
       (insert-button (format "%s" (cdr (assoc 'title entry)))
 		     'action (lambda (x) (arxiv-open-current-url))
-		     'face '(arxiv-title-face (:height 1.4 :weight semi-bold :underline t))
+		     'face '(arxiv-title-face (:height 1.5 :weight semi-bold :underline t))
 		     'mouse-face 'highlight
 		     'follow-link t
 		     'help-echo (format "Link: %s" (cdr (assoc 'url entry))))
@@ -521,15 +521,15 @@ is not related to the arxiv-add-bibtex-entry in org-ref package."
   (let
       ((bibtex-info (arxiv-export-bibtex-to-string pdfpath)))
     (select-window arxiv-abstract-window)
+    (pop-to-buffer "*arXiv-bibTeX*" '(display-buffer-below-selected))
     ;; (split-window-below)
     ;; (select-window (next-window))
-    (pop-to-buffer-same-window "*arXiv-bibTeX*")
+    ;; (pop-to-buffer-same-window "*arXiv-bibTeX*")
     (erase-buffer)
     (insert bibtex-info)
     (setq buffer-read-only nil)
     (bibtex-mode)
-    (bibtex-set-dialect 'BibTeX t)
-      ))
+    (bibtex-set-dialect 'BibTeX t)))
 
 (defun arxiv-download-pdf-export-bibtex ()
   "Download the pdf file of the current entry and export a bibtex entry to the selected bibtex file."
@@ -788,9 +788,9 @@ _x_: perform search with current condition(s)       _q_: quit
 ArXiv mode help message
 ---------------------------------------------------------------------------------------------------------
 _n_: next entry           _SPC_: toggle abstract window          _b_: export bibtex entry
-_p_: previous entry       _RET_: open link in browser            _e_: download pdf & export bibtex entry
-_r_: refine search          _d_: download PDF                    _?_: toggle this help
-_q_: quit Arxiv mode
+_p_: previous entry       _RET_: open link in browser            _B_: display bibtex entry in new buffer
+_r_: refine search          _d_: download PDF                    _e_: download pdf & export bibtex entry
+_q_: quit Arxiv mode        _?_: toggle this help
 "
   ("n" arxiv-next-entry)
   ("p" arxiv-prev-entry)
