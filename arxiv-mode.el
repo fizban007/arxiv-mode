@@ -1,4 +1,4 @@
-;;; arxiv-mode.el --- read and search for articles on arXiv.org  -*- lexical-binding: t; -*-
+;;; arxiv-mode.el --- Read and search for articles on arXiv.org  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2013-2021 Alex Chen, Simon Lin
 
@@ -6,8 +6,8 @@
 ;;         Simon Lin (Simon-Lin) <n.sibetz@gmail.com>
 ;; URL: https://github.com/fizban007/arxiv-mode
 ;; Version: 0.3.0
-;; Keywords: arxiv
-;; Package-Requires: ((hydra "0"))
+;; Keywords: bib, convenience, hypermedia
+;; Package-Requires: ((emacs "27.1") (hydra "0"))
 ;; This file is not part of GNU Emacs.
 
 ;; This program is free software; you can redistribute it and/or
@@ -73,8 +73,10 @@
 
 ;;; Code:
 
+(require 'seq)
 (require 'button)
 (require 'hydra)
+(require 'bibtex)
 (require 'arxiv-vars)
 (require 'arxiv-query)
 
@@ -105,8 +107,7 @@ Type ? to invoke major commands."
   (overlay-put arxiv-highlight-overlay 'face '(:inherit highlight :extend t))
   (if arxiv-use-variable-pitch
       (variable-pitch-mode 1)
-    (variable-pitch-mode -1))
-  )
+    (variable-pitch-mode -1)))
 
 (defvar arxiv-abstract-mode-map
   (let ((map (make-sparse-keymap)))
@@ -162,7 +163,7 @@ With ARG, move to the previous nth entry."
   (move-overlay arxiv-highlight-overlay
 		(point) (progn (beginning-of-line 5) (point)))
   (forward-line (- 4))
-  (when arxiv-abstract-window
+  (when (window-live-p arxiv-abstract-window)
     (arxiv-show-abstract)))
 
 (defun arxiv-select-entry ()
@@ -174,11 +175,12 @@ With ARG, move to the previous nth entry."
     (move-overlay arxiv-highlight-overlay
 		  (point) (progn (beginning-of-line 5) (point)))
     (forward-line (- 4))
-    (when arxiv-abstract-window
+    (when (window-live-p arxiv-abstract-window)
       (arxiv-show-abstract)))
 
 (defun arxiv-click-select-entry (ev)
-  "Select the entry at which the mouse is currently pointing."
+  "Select the entry at which the mouse is currently pointing.
+This should be bound to a mouse click event EV."
   (interactive "e")
   (mouse-set-point ev)
   (arxiv-select-entry)
@@ -187,9 +189,7 @@ With ARG, move to the previous nth entry."
 (defun arxiv-open-current-url ()
   "Open the webpage for the current highlighted paper entry."
   (interactive)
-  (setq url (cdr (assoc 'url (nth arxiv-current-entry arxiv-entry-list))))
-  ;; (start-process "arxiv-webpage" nil arxiv-default-browser url)
-  (browse-url url))
+  (browse-url (cdr (assoc 'url (nth arxiv-current-entry arxiv-entry-list)))))
 
 (defun arxiv-download-pdf (&optional confirm)
   "Download and save the highlighted paper to desired folder.
@@ -221,14 +221,14 @@ user with opening file."
 (defun arxiv-show-abstract ()
   "Show the abstract window and display appropriate information."
   (unless (buffer-live-p arxiv-abstract-buffer)
-    (setq arxiv-abstract-buffer (get-buffer-create "*arXiv-abstract*"))
-    (with-current-buffer arxiv-abstract-buffer
-      (arxiv-abstract-mode)
-      (setq-local prettify-symbols-alist arxiv-abstract-prettify-symbols-alist)
-      (prettify-symbols-mode 1)))
+    (setq arxiv-abstract-buffer (get-buffer-create "*arXiv-abstract*")))
+  (with-current-buffer arxiv-abstract-buffer
+    (arxiv-abstract-mode)
+    (setq-local prettify-symbols-alist arxiv-abstract-prettify-symbols-alist)
+    (prettify-symbols-mode 1)
+    (arxiv-format-abstract-page (nth arxiv-current-entry arxiv-entry-list)))
   (unless (window-live-p arxiv-abstract-window)
-    (setq arxiv-abstract-window (display-buffer "*arXiv-abstract*" t)))
-  (arxiv-format-abstract-page (nth arxiv-current-entry arxiv-entry-list)))
+    (setq arxiv-abstract-window (display-buffer "*arXiv-abstract*" t))))
   
 (defun arxiv-toggle-abstract ()
   "Toggle the visibility of the abstract.
@@ -245,7 +245,7 @@ If the abstract window does not exist, create it and display
   "Jump to the cursor position or open abstract window.
 If the cursor position does not correspond to the current entry,
 move the current entry to the corresponding position. Otherwise call
-arxiv-toggle-abstract."
+`arxiv-toggle-abstract'."
   (interactive)
   (if (eq (/ (line-number-at-pos) 4) arxiv-current-entry)
       (arxiv-toggle-abstract)
@@ -284,12 +284,12 @@ If MIN-ENTRY and MAX-ENTRY are ignored, defaults to fill with the whole `arxiv-e
     (mapcar
      (lambda (entry)
        (progn
-	 (arxiv-insert-with-face (format  " %s\n " (alist-get 'title entry)) '(:inherit arxiv-title-face :height 1.2))
-	 (let ((authors (copy-sequence (alist-get 'authors entry))) (overlength nil))
-	   (when (> (length authors) arxiv-author-list-maximum)
-	     (setcdr (nthcdr (1- arxiv-author-list-maximum) authors) nil)
+	 (arxiv-insert-with-face (format  " %s\n " (alist-get 'title entry)) 'arxiv-title-face)
+	 (let ((author-list (copy-sequence (alist-get 'author entry))) (overlength nil))
+	   (when (> (length author-list) arxiv-author-list-maximum)
+	     (setcdr (nthcdr (1- arxiv-author-list-maximum) author) nil)
 	     (setq overlength t))
-	   (dolist (author authors)
+	   (dolist (author author-list)
 	     (arxiv-insert-with-face (format "%s" author) 'arxiv-author-face)
 	     (insert ", "))
 	   (if overlength
@@ -304,15 +304,13 @@ If MIN-ENTRY and MAX-ENTRY are ignored, defaults to fill with the whole `arxiv-e
 	 (insert "\n\n")))
      arxiv-entry-list-trun)))
 
-(defun arxiv-populate-page (&optional arxiv-buffer)
-  "Populate the page of results according to arxiv-entry-list into buffer.
-Automatically finds ARXIV-BUFFER if it is not specified."
+(defun arxiv-populate-page ()
+  "Populate the page of results according to `arxiv-entry-list' into buffer."
   (if arxiv-entry-list
       (progn
-	(unless arxiv-buffer
+	(unless (buffer-live-p arxiv-buffer)
 	  (setq arxiv-buffer (get-buffer-create "*arXiv-update*")))
-	(save-excursion
-	  (set-buffer arxiv-buffer)
+	(with-current-buffer arxiv-buffer
 	  (setq buffer-read-only nil)
 	  (erase-buffer)
 	  (arxiv-fill-page)
@@ -322,17 +320,15 @@ Automatically finds ARXIV-BUFFER if it is not specified."
 	  (move-overlay arxiv-highlight-overlay
 			(point) (progn (beginning-of-line 5) (point)))
 	  (goto-char (point-min))
-	  (message "Showing results %d-%d of %d" arxiv-query-results-min arxiv-query-results-max arxiv-query-total-results)
-	  (setq buffer-read-only t))
+	  (message "Showing results %d-%d of %d" arxiv-query-results-min arxiv-query-results-max arxiv-query-total-results))
 	(switch-to-buffer arxiv-buffer)
 	(when arxiv-startup-with-abstract-window
 	  (arxiv-show-abstract)))
     (message "No articles matching the search condition.")))
 
-(defun arxiv-show-next-page (&optional arxiv-buffer)
+(defun arxiv-show-next-page ()
   "Perform one more query and fill the results into buffer.
-\(according to arxiv-current-entry and arxiv-entries-per-fetch)
-Automatically finds ARXIV-BUFFER if it is not specified."
+\(according to `arxiv-current-entry' and `arxiv-entries-per-fetch')"
   (unless arxiv-buffer
     (setq arxiv-buffer (get-buffer "*arXiv-update*")))
   (let* ((min (* arxiv-entries-per-fetch (/ (+ 1 arxiv-current-entry) arxiv-entries-per-fetch)))
@@ -371,105 +367,98 @@ Automatically finds ARXIV-BUFFER if it is not specified."
 
 (defun arxiv-format-abstract-page (entry)
   "Format the arxiv abstract page according to ENTRY."
-  (with-current-buffer arxiv-abstract-buffer
-    ;; header-line
-    (setq header-line-format (format " arXiv:%s" (cdr (assoc 'id entry))))
-    
-    ;;contents
-    (let ((buffer-read-only nil))
-      (erase-buffer)
-      ;; title
-      (arxiv-insert-with-face "\n" '(arxiv-title-face (:height 1.2)))
-      (insert-button (format "%s" (cdr (assoc 'title entry)))
-		     'action (lambda (x) (arxiv-open-current-url))
-		     'face '(arxiv-title-face (:height 1.5 :weight semi-bold :underline t))
-		     'mouse-face 'highlight
-		     'follow-link t
-		     'help-echo (format "Link: %s" (cdr (assoc 'url entry))))
-      (arxiv-insert-with-face "\n\n" '(arxiv-title-face (:height 1.2)))
-      ;; (arxiv-insert-with-face (format "\n%s\n\n" (cdr (assoc 'title entry))) '(arxiv-title-face (:height 1.2 :weight semi-bold)))
-      ;; author list
-      (let ((authors (cdr (assoc 'authors entry))))
-	(dolist (author authors)
-	  (insert-button (format "%s" author)
-			 'action (lambda (x) (arxiv-toggle-abstract) (arxiv-read-author author))
-			 'follow-link t
-			 'face '(arxiv-author-face (:height 1.2 :underline t))
-			 'mouse-face 'highlight
-			 'help-echo (format "Look up author: %s" author))
-	  ;; (arxiv-insert-with-face (format "%s" author) '(arxiv-author-face (:height 1.1 :underline t)) 'mouse-face 'highlight 'help-echo (format "Look up papers from author: %s." author))
-	  (insert ", ")))
-      (delete-char -2)
-      (insert "\n\n")
-      ;; abstract
-      (let ((abstract (cdr (assoc 'abstract entry))))
-	(arxiv-insert-with-face "    " arxiv-abstract-face)
-	(setq abstract (replace-regexp-in-string "^ +" "" abstract))
-	(insert (propertize abstract 'font-lock-face arxiv-abstract-face 'wrap-prefix "    ")))
-      ;; highlight math
-      (save-excursion
-	(while (search-backward-regexp "\\$[^$]+\\$" nil t)
-	  (add-text-properties (match-beginning 0) (match-end 0) '(font-lock-face arxiv-abstract-math-face))))
-      ;; comment
-      (if (cdr (assoc 'comment entry))
-	  (arxiv-insert-with-face (format "\n\nComments: %s" (cdr (assoc 'comment entry))) arxiv-subfield-face)
-	(arxiv-insert-with-face "\n\nComments: N/A" arxiv-subfield-face))
-      ;; subject
-      (arxiv-insert-with-face (format "\nSubjects: ") arxiv-subfield-face)
-      (let* ((main-cat t) (cats (cdr (assoc 'categories entry))))
-	(dolist (cat cats)
-	  (let (field)
-	    (setq field (cdr (assoc (intern-soft cat) arxiv-subject-classifications)))
-	    (if main-cat
-		(progn ; the main subject is in bold
-		  (arxiv-insert-with-face (format "%s " field) '(:inherit arxiv-subfield-face :weight semi-bold))
-		  (arxiv-insert-with-face (format "(%s)" cat) '(:inherit arxiv-subfield-face :weight semi-bold))
-		  (setq main-cat nil))
-	      (insert (propertize (format "%s " field) 'font-lock-face arxiv-subfield-face 'wrap-prefix "  "))
-	      (insert (propertize (format "(%s)" cat) 'font-lock-face arxiv-subfield-face 'wrap-prefix "  ")))
-	    (arxiv-insert-with-face "; " arxiv-subfield-face))))
-      (delete-char -2)
-      ;; journal/DOI
-      (when (cdr (assoc 'journal entry)) (arxiv-insert-with-face (format "\nJournal: %s" (cdr (assoc 'journal entry))) arxiv-subfield-face))
-      (when (cdr (assoc 'DOI entry)) (arxiv-insert-with-face (format "\nDOI: %s" (cdr (assoc 'DOI entry))) arxiv-subfield-face))
-      ;; times
-      (arxiv-insert-with-face (format "\nSubmitted: %s" (cdr (assoc 'date entry))) arxiv-subfield-face)
-      (arxiv-insert-with-face (format "\nUpdated: %s" (cdr (assoc 'updated entry))) arxiv-subfield-face))))
+  ;; header-line
+  (setq header-line-format (format " arXiv:%s" (cdr (assoc 'id entry))))    
+  ;;contents
+  (let ((buffer-read-only nil))
+    (erase-buffer)
+    ;; title
+    (arxiv-insert-with-face "\n" arxiv-title-face)
+    (insert-button (format "%s" (cdr (assoc 'title entry)))
+		   'action (lambda () (arxiv-open-current-url))
+		   'face 'arxiv-abstract-title-face
+		   'mouse-face 'highlight
+		   'follow-link t
+		   'help-echo (format "Link: %s" (cdr (assoc 'url entry))))
+    (arxiv-insert-with-face "\n\n" arxiv-title-face)
+    ;; author list
+    (let ((author-list (cdr (assoc 'author entry))))
+      (dolist (author author-list)
+	(insert-button (format "%s" author)
+		       'action (lambda () (arxiv-toggle-abstract) (arxiv-read-author author))
+		       'follow-link t
+		       'face 'arxiv-abstract-author-face
+		       'mouse-face 'highlight
+		       'help-echo (format "Look up author: %s" author))
+	(insert ", ")))
+    (delete-char -2)
+    (insert "\n\n")
+    ;; abstract
+    (let ((abstract (cdr (assoc 'abstract entry))))
+      (arxiv-insert-with-face "    " arxiv-abstract-face)
+      (setq abstract (replace-regexp-in-string "^ +" "" abstract))
+      (insert (propertize abstract 'font-lock-face arxiv-abstract-face 'wrap-prefix "    ")))
+    ;; highlight math
+    (save-excursion
+      (while (search-backward-regexp "\\$[^$]+\\$" nil t)
+	(add-text-properties (match-beginning 0) (match-end 0) '(font-lock-face arxiv-abstract-math-face))))
+    ;; comment
+    (if (cdr (assoc 'comment entry))
+	(arxiv-insert-with-face (format "\n\nComments: %s" (cdr (assoc 'comment entry))) arxiv-subfield-face)
+      (arxiv-insert-with-face "\n\nComments: N/A" arxiv-subfield-face))
+    ;; subject
+    (arxiv-insert-with-face (format "\nSubjects: ") arxiv-subfield-face)
+    (let* ((main-cat t) (cats (cdr (assoc 'categories entry))))
+      (dolist (cat cats)
+	(let (field)
+	  (setq field (cdr (assoc (intern-soft cat) arxiv-subject-classifications)))
+	  (if main-cat
+	      (progn ; the main subject is in bold
+		(arxiv-insert-with-face (format "%s " field) '(:inherit arxiv-subfield-face :weight semi-bold))
+		(arxiv-insert-with-face (format "(%s)" cat) '(:inherit arxiv-subfield-face :weight semi-bold))
+		(setq main-cat nil))
+	    (insert (propertize (format "%s " field) 'font-lock-face arxiv-subfield-face 'wrap-prefix "  "))
+	    (insert (propertize (format "(%s)" cat) 'font-lock-face arxiv-subfield-face 'wrap-prefix "  ")))
+	  (arxiv-insert-with-face "; " arxiv-subfield-face))))
+    (delete-char -2)
+    ;; journal/DOI
+    (when (cdr (assoc 'journal entry)) (arxiv-insert-with-face (format "\nJournal: %s" (cdr (assoc 'journal entry))) arxiv-subfield-face))
+    (when (cdr (assoc 'DOI entry)) (arxiv-insert-with-face (format "\nDOI: %s" (cdr (assoc 'DOI entry))) arxiv-subfield-face))
+    ;; times
+    (arxiv-insert-with-face (format "\nSubmitted: %s" (cdr (assoc 'date entry))) arxiv-subfield-face)
+    (arxiv-insert-with-face (format "\nUpdated: %s" (cdr (assoc 'updated entry))) arxiv-subfield-face)))
 
 (defun arxiv-export-bibtex-to-string (&optional pdfpath)
   "Generate a bibtex entry according to the current arxiv entry.
 Also add a link to PDFPATH in bibtex entry if it is specified.
 It returns a string buffer containing the bibtex entry. This
 function is a part of arXiv mode, and is supposed to be called by
-arxiv-export-bibtex or arxiv-export-bibtex-to-buffer. This
-function is not related to the arxiv-add-bibtex-entry in org-ref
-package."
-  ;; (interactive)
+`arxiv-export-bibtex' or `arxiv-export-bibtex-to-buffer'."
   (let*
       ((entry (nth arxiv-current-entry arxiv-entry-list))
        (title (cdr (assoc 'title entry)))
        (id (cdr (assoc 'id entry)))
-       (author-list (cdr (assoc 'authors entry)))
+       (author-list (cdr (assoc 'author entry)))
        (abstract (cdr (assoc 'abstract entry)))
        (year (cdr (assoc 'date entry)))
        (url (cdr (assoc 'url entry)))
        (journal (cdr (assoc 'journal entry)))
        (doi (cdr (assoc 'doi entry)))
-       (authors nil) (key nil) (bibtex-info nil) (bibfile nil))
+       (author) (key) (bibtex-info))
     (setq author-list (mapcar (lambda (name) (progn
 			(string-match "\\(.+\\) \\([^ ]+?\\)$" name)
 			(setq name (concat (match-string 2 name) ", " (match-string 1 name)))))
 			       author-list))
     (string-match "^[0-9]+" year)
     (setq year (match-string 0 year))
-    (setq authors (string-join author-list " and "))
+    (setq author (mapconcat 'identity author-list " and "))
     (setq abstract (replace-regexp-in-string "^ +" "" abstract))
     (setq abstract (replace-regexp-in-string " +$" "" abstract))
     (setq bibtex-info (format "@article{,
 title = {%s},
 author = {%s},
 year = {%s}
-}" title authors year))
+}" title author year))
     (with-temp-buffer
       (insert bibtex-info)
       (bibtex-mode)
@@ -482,7 +471,7 @@ abstract = {%s},
 archivePrefix = {arXiv},
 eprint = {%s},
 url = {%s},
-year = {%s}" key title authors abstract id url year))
+year = {%s}" key title author abstract id url year))
     (when doi
       (setq bibtex-info (concat bibtex-info (format ",\ndoi = {%s}" doi))))
     (when journal
@@ -497,12 +486,10 @@ year = {%s}" key title authors abstract id url year))
 Also add a link to PDFPATH in bibtex entry if it is specified.
 This function is a part of arXiv mode. You can
 customize the default .bib file by customizing the
-arxiv-default-bibliography variable. This function is not related
-to the arxiv-add-bibtex-entry in org-ref package."
+`arxiv-default-bibliography' variable."
   (interactive)
-  (progn
-    (setq bibtex-info (arxiv-export-bibtex-to-string pdfpath))
-    (setq bibfile (read-file-name "export to bibliography file: " nil nil t (expand-file-name arxiv-default-bibliography)))
+  (let ((bibtex-info (arxiv-export-bibtex-to-string pdfpath))
+	(bibfile (read-file-name "export to bibliography file: " nil nil t (expand-file-name arxiv-default-bibliography))))
     (save-window-excursion
       (find-file bibfile)
       (goto-char (point-max))
@@ -675,7 +662,7 @@ If AUTHOR is non-nil, find papers by author in all categories."
     (message "Refining search is only available in arxiv-search or arxiv-complex-search.")))
 
 (defun arxiv-query-data-update (field condition)
-  "Update the variable arxiv-query-data-list in FIELD.
+  "Update the variable `arxiv-query-data-list' in FIELD.
 Do exclusive update if CONDITION is nil. Also updates `arxiv-query-info'."
   (if (or condition arxiv-query-data-list)
       (let ((temp-query-info) (context))
@@ -757,8 +744,7 @@ _x_: perform search with current condition(s)       _q_: quit
   ("m" (arxiv-query-data-update 'comment t))
   ("-" arxiv-search-menu-ex/body)
   ("x" arxiv-hydra-perform-search)
-  ("q" (setq arxiv-query-data-list nil) "quit")
-  )
+  ("q" (setq arxiv-query-data-list nil) "quit"))
  
 (defhydra arxiv-search-menu-ex (:color red :foreign-keys warn :exit t)
   "
@@ -780,8 +766,7 @@ _x_: perform search with current condition(s)       _q_: quit
   ("m" (arxiv-query-data-update 'comment nil))
   ("+" arxiv-search-menu/body)
   ("x" arxiv-hydra-perform-search)
-  ("q" (setq arxiv-query-data-list nil) "quit")
-  )
+  ("q" (setq arxiv-query-data-list nil) "quit"))
 
 (defhydra arxiv-help-menu (:color red :foriegn-keys run)
   "
@@ -801,8 +786,8 @@ _q_: quit Arxiv mode        _?_: toggle this help
   ("d" arxiv-download-pdf)
   ("?" nil)
   ("b" arxiv-export-bibtex)
-  ("e" arxiv-download-pdf-export-bibtex)
-  )
+  ("B" arxiv-export-bibtex-to-buffer)
+  ("e" arxiv-download-pdf-export-bibtex))
 
 (provide 'arxiv-mode)
 

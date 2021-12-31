@@ -261,7 +261,7 @@ context is a string seperated by quotes and spaces.")
     (stat.ML . "Machine Learning")
     (stat.OT . "Other Statistics")
     (stat.TH . "Statistics Theory"))
-  "arXiv subjects alist for displaying.")
+  "ArXiv subjects alist for displaying.")
 
 (defcustom arxiv-startup-with-abstract-window nil
   "Whether to start `arxiv-mode' with an abstract window."
@@ -308,7 +308,7 @@ context is a string seperated by quotes and spaces.")
 ;; Defining custom faces
 (defvar arxiv-title-face 'arxiv-title-face)
 (defface arxiv-title-face
-  '((t (:inherit font-lock-keyword-face)))
+  '((t (:inherit font-lock-keyword-face :height 1.2)))
   "Face name for article titles in the arXiv article list."
   :group 'arxiv-fontification)
 
@@ -334,6 +334,18 @@ context is a string seperated by quotes and spaces.")
 (defface arxiv-abstract-face
   '((t (:inherit font-lock-doc-face)))
   "Face name for abstract in the arXiv abstract viewing window."
+  :group 'arxiv-fontification)
+
+(defvar arxiv-abstract-title-face 'arxiv-abstract-title-face)
+(defface arxiv-abstract-title-face
+  '((t (:inherit font-lock-keyword-face :height 1.5 :weight semi-bold :underline t)))
+  "Face name for title in the arXiv abstract viewing window."
+  :group 'arxiv-fontification)
+
+(defvar arxiv-abstract-author-face 'arxiv-abstract-author-face)
+(defface arxiv-abstract-author-face
+  '((t (:inherit font-lock-type-face :height 1.2 :underline t)))
+  "Face name for authors in the arXiv abstract viewing window."
   :group 'arxiv-fontification)
 
 (defvar arxiv-subfield-face 'arxiv-subfield-face)
