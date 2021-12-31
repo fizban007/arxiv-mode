@@ -287,7 +287,7 @@ If MIN-ENTRY and MAX-ENTRY are ignored, defaults to fill with the whole `arxiv-e
 	 (arxiv-insert-with-face (format  " %s\n " (alist-get 'title entry)) 'arxiv-title-face)
 	 (let ((author-list (copy-sequence (alist-get 'author entry))) (overlength nil))
 	   (when (> (length author-list) arxiv-author-list-maximum)
-	     (setcdr (nthcdr (1- arxiv-author-list-maximum) author) nil)
+	     (setcdr (nthcdr (1- arxiv-author-list-maximum) author-list) nil)
 	     (setq overlength t))
 	   (dolist (author author-list)
 	     (arxiv-insert-with-face (format "%s" author) 'arxiv-author-face)
@@ -368,7 +368,7 @@ If MIN-ENTRY and MAX-ENTRY are ignored, defaults to fill with the whole `arxiv-e
 (defun arxiv-format-abstract-page (entry)
   "Format the arxiv abstract page according to ENTRY."
   ;; header-line
-  (setq header-line-format (format " arXiv:%s" (cdr (assoc 'id entry))))    
+  (setq header-line-format (format " arXiv:%s" (cdr (assoc 'id entry))))
   ;;contents
   (let ((buffer-read-only nil))
     (erase-buffer)
@@ -451,7 +451,7 @@ function is a part of arXiv mode, and is supposed to be called by
 			       author-list))
     (string-match "^[0-9]+" year)
     (setq year (match-string 0 year))
-    (setq author (mapconcat 'identity author-list " and "))
+    (setq author (mapconcat #'identity author-list " and "))
     (setq abstract (replace-regexp-in-string "^ +" "" abstract))
     (setq abstract (replace-regexp-in-string " +$" "" abstract))
     (setq bibtex-info (format "@article{,
