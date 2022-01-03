@@ -1,4 +1,4 @@
-[![MELPA](https://melpa.org/packages/arxiv-mode-badge.svg)](https://melpa.org/#/arxiv-mode)
+[![MELPA](https://melpa.org/packages/arxiv-mode-badge.svg)](https://melpa.org/#/arxiv-mode)    [![MELPA Stable](https://stable.melpa.org/packages/arxiv-mode-badge.svg)](https://stable.melpa.org/#/arxiv-mode)
 
 # arXiv-mode
 
