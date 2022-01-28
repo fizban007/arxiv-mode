@@ -5,7 +5,7 @@
 ;; Author: Alex Chen (fizban007) <fizban007@gmail.com>
 ;;         Simon Lin (Simon-Lin) <n.sibetz@gmail.com>
 ;; URL: https://github.com/fizban007/arxiv-mode
-;; Version: 0.3.0
+;; Version: 0.3.1
 ;; Keywords: bib, convenience, hypermedia
 ;; Package-Requires: ((emacs "27.1") (hydra "0"))
 ;; This file is not part of GNU Emacs.
@@ -57,10 +57,16 @@
 ;; Installation
 ;; ============
 ;;
-;; Just put the directory in your filesystem and at it to your
-;; `load-path`. Put the following into your `.emacs` file
-;; 
+;; arxiv-mode is available on MELPA.
+;; After `M-x package-install RET arxiv-mode RET`, put the following code in your `init.el`:
+;;
 ;; (require 'arxiv-mode)
+;;
+;; Or if you use `use-package`, you can simply put:
+;; (use-package arxiv-mode
+;;   :ensure t)
+;;
+;; into the your init file. `use-package` will automatically download `arxiv-mode` for you.
 ;;
 ;;
 ;; Customization
@@ -204,7 +210,7 @@ user with opening file."
     (setq pdfname (concat (match-string 1 url) ".pdf"))
     (setq newfile (read-file-name "save pdf as: "
 				  (expand-file-name arxiv-default-download-folder)
-				  pdfname nil pdfname))
+				  nil nil pdfname))
     (if (directory-name-p newfile) (setq newfile (concat newfile pdfname)))
     (url-copy-file url newfile 1)
     (unless confirm
