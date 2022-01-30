@@ -496,7 +496,7 @@ customize the default .bib file by customizing the
   (interactive)
   (let ((bibtex-info (arxiv-export-bibtex-to-string pdfpath))
 	(bibfile (read-file-name "export to bibliography file: " nil nil t (expand-file-name arxiv-default-bibliography))))
-    (save-window-excursion
+    (with-temp-buffer
       (find-file bibfile)
       (goto-char (point-max))
       (when (not (looking-at "^")) (insert "\n"))
