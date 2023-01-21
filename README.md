@@ -54,6 +54,8 @@ The variable `arxiv-author-list-maximum` sets the maximum number of authors to d
 
 ### behavior
 If you set `arxiv-startup-with-abstract-window` to `t`, arxiv-mode will default to startup with the abstract window open instead of a plain query list.
+The variable `arxiv-pop-up-new-frame` controls whether a new frame will be displayed for the query result. It defaults to `t`.
+You can specify the frame properties of the new frame by customizing the variable `arxiv-frame-alist`.
 The default category used for query can be set by changing the variable `arxiv-default-category`.
 The variable `arxiv-entries-per-fetch` sets the maximum number of articles arxiv-mode will try to query each time from arxiv.org (Note that setting this number too high will cause emacs to stutter).
 

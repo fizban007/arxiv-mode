@@ -1,11 +1,11 @@
 ;;; arxiv-mode.el --- Read and search for articles on arXiv.org  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2013-2021 Alex Chen, Simon Lin
+;; Copyright (C) 2013-2023 Alex Chen, Simon Lin
 
 ;; Author: Alex Chen (fizban007) <fizban007@gmail.com>
 ;;         Simon Lin (Simon-Lin) <n.sibetz@gmail.com>
 ;; URL: https://github.com/fizban007/arxiv-mode
-;; Version: 0.3.1
+;; Version: 0.3.2
 ;; Keywords: bib, convenience, hypermedia
 ;; Package-Requires: ((emacs "27.1") (hydra "0"))
 ;; This file is not part of GNU Emacs.
@@ -234,7 +234,8 @@ user with opening file."
     (prettify-symbols-mode 1)
     (arxiv-format-abstract-page (nth arxiv-current-entry arxiv-entry-list)))
   (unless (window-live-p arxiv-abstract-window)
-    (setq arxiv-abstract-window (display-buffer "*arXiv-abstract*" t))))
+    (setq arxiv-abstract-window (display-buffer "*arXiv-abstract*" t)))
+  (set-window-dedicated-p arxiv-abstract-window t))
   
 (defun arxiv-toggle-abstract ()
   "Toggle the visibility of the abstract.
@@ -263,10 +264,11 @@ move the current entry to the corresponding position. Otherwise call
   (when (window-live-p arxiv-abstract-window)
     (quit-restore-window arxiv-abstract-window 'kill)
     (setq arxiv-abstract-window nil))
-  (kill-buffer "*arXiv-update*")
+  (quit-restore-window (get-buffer-window "*arXiv-update*") 'kill)
   (when (get-buffer "*arXiv-abstract*")
     (kill-buffer "*arXiv-abstract*"))
-  (setq arxiv-abstract-buffer nil))
+  (setq arxiv-abstract-buffer nil)
+  (setq arxiv-frame nil))
 
 
 (defun arxiv-headerline-format ()
@@ -314,6 +316,11 @@ If MIN-ENTRY and MAX-ENTRY are ignored, defaults to fill with the whole `arxiv-e
   "Populate the page of results according to `arxiv-entry-list' into buffer."
   (if arxiv-entry-list
       (progn
+	(when arxiv-pop-up-new-frame
+	  (unless (frame-live-p arxiv-frame)
+	    (setq arxiv-frame
+		  (make-frame arxiv-frame-alist)))
+	  (select-frame  arxiv-frame))
 	(unless (buffer-live-p arxiv-buffer)
 	  (setq arxiv-buffer (get-buffer-create "*arXiv-update*")))
 	(with-current-buffer arxiv-buffer
@@ -327,7 +334,9 @@ If MIN-ENTRY and MAX-ENTRY are ignored, defaults to fill with the whole `arxiv-e
 			(point) (progn (beginning-of-line 5) (point)))
 	  (goto-char (point-min))
 	  (message "Showing results %d-%d of %d" arxiv-query-results-min arxiv-query-results-max arxiv-query-total-results))
+	
 	(switch-to-buffer arxiv-buffer)
+	(set-window-dedicated-p nil t)
 	(when arxiv-startup-with-abstract-window
 	  (arxiv-show-abstract)))
     (message "No articles matching the search condition.")))
@@ -495,15 +504,15 @@ customize the default .bib file by customizing the
 `arxiv-default-bibliography' variable."
   (interactive)
   (let ((bibtex-info (arxiv-export-bibtex-to-string pdfpath))
-	(bibfile (read-file-name "export to bibliography file: " nil nil t (expand-file-name arxiv-default-bibliography))))
-    (with-temp-buffer
-      (find-file bibfile)
+	(bibfile (read-file-name "export to bibliography file: " (expand-file-name arxiv-default-bibliography) nil 'confirm)))
+    (with-temp-file bibfile
+      (insert-file-contents bibfile)
       (goto-char (point-max))
       (when (not (looking-at "^")) (insert "\n"))
       (insert bibtex-info)
       (goto-char (point-max))
-      (when (not (looking-at "^")) (insert "\n"))
-      (save-buffer))))
+      (when (not (looking-at "^")) (insert "\n")))
+    (message (format "Written bibTeX entry to %s." bibfile))))
 
 (defun arxiv-export-bibtex-to-buffer (&optional pdfpath)
   "Export bibtex for the current entry and display it in a temporary buffer.

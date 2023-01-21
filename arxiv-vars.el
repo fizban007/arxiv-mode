@@ -20,16 +20,16 @@
 ;;; Code:
 
 (defgroup arxiv nil
-  "A mode for reading arXiv abstracts"
+  "A mode for reading arXiv abstracts."
   :prefix "arxiv-"
   :group 'applications)
 
 (defgroup arxiv-fontification nil
-  "Faces for the arxiv mode"
+  "Faces for the arxiv mode."
   :group 'arxiv)
 
 (defgroup arxiv-preferences nil
-  "General preferences for the arxiv mode"
+  "General preferences for the arxiv mode."
   :group 'arxiv)
 
 (defvar arxiv-mode-hook nil
@@ -37,6 +37,10 @@
 
 (defvar arxiv-abstract-mode-hook nil
   "A list of functions to call when entering `arxiv-abstract-mode'.")
+
+(defvar arxiv-frame nil
+  "Current frame accommodating `arxiv-mode'.
+Only used when `arxiv-pop-up-new-frame' is set to t.")
 
 (defvar arxiv-buffer nil
   "Current buffer for viewing arXiv updates.")
@@ -263,6 +267,16 @@ context is a string seperated by quotes and spaces.")
     (stat.TH . "Statistics Theory"))
   "ArXiv subjects alist for displaying.")
 
+(defcustom arxiv-pop-up-new-frame t
+  "Whether to start `arxiv-mode' with a new pop-up frame."
+  :group 'arxiv-preferences
+  :type 'boolean)
+
+(defcustom arxiv-frame-alist '((name . "*arXiv*") (width . 240) (height . 80))
+  "The alist containing the property of arXiv pop-up frame."
+  :group 'arxiv-preferences
+  :type 'sexp)
+
 (defcustom arxiv-startup-with-abstract-window nil
   "Whether to start `arxiv-mode' with an abstract window."
   :group 'arxiv-preferences
@@ -357,8 +371,7 @@ context is a string seperated by quotes and spaces.")
 (defvar arxiv-abstract-math-face 'arxiv-abstract-math-face)
 (defface arxiv-abstract-math-face
   '((t (:inherit font-lock-reference-face :family "Monospace")))
-  "Face name for the latex content in abstract in the arXiv
-abstract viewing window."
+  "Face name for the latex content in abstract in the arXiv abstract viewing window."
   :group 'arxiv-fontification)
 
 (defvar arxiv-abstract-syntax-table
@@ -825,7 +838,8 @@ abstract viewing window."
     ("\\textrquill" . 8262)             ; Literal ?⁆ breaks indentation.
     ("\\textcircledP" . ?℗)
     ("\\textreferencemark" . ?※))
-  "A `prettify-symbols-alist' used when viewing math source code. Taken from for tex-mode.el.")
+  "A `prettify-symbols-alist' used when viewing math source code.
+Taken from for tex-mode.el.")
 
 
 (provide 'arxiv-vars)
