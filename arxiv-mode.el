@@ -278,7 +278,7 @@ move the current entry to the corresponding position. Otherwise call
     (list
      (list (- info-width)
 	   (if (or (eq arxiv-mode-entry-function 'arxiv-complex-search) (eq arxiv-mode-entry-function 'arxiv-search))
-	       (concat " search results for " arxiv-query-info)
+	       (concat " Search results for " arxiv-query-info ". Sorting: " arxiv-order-info)
 	     arxiv-query-info)
      (propertize " " 'display `(space :align-to ,info-width))
      entry))))
@@ -655,6 +655,8 @@ If AUTHOR is non-nil, find papers by author in all categories."
 	(message "exit with blank search condition.")
       (setq arxiv-query-data-list `((all t ,condition)))
       (setq arxiv-query-info (format "all:%s" condition))
+      (setq arxiv-query-sorting nil)
+      (setq arxiv-order-info "Default")
       (setq arxiv-entry-list (arxiv-query-general))
       (setq arxiv-mode-entry-function 'arxiv-search)
       (arxiv-populate-page))))
@@ -665,6 +667,8 @@ If AUTHOR is non-nil, find papers by author in all categories."
   (interactive)
   (setq arxiv-query-data-list nil)
   (setq arxiv-query-info "")
+  (setq arxiv-query-sorting nil)
+  (setq arxiv-order-info "Default")
   (arxiv-search-menu/body))
 
 (defun arxiv-refine-search ()
@@ -726,13 +730,36 @@ Do exclusive update if CONDITION is nil. Also updates `arxiv-query-info'."
     (message "Only inclusive searching is allowed as the first keyword."))
   (arxiv-search-menu/body))
 
+(defun arxiv-query-order-update ()
+    "Update the variable `arxiv-query-sorting from user input."
+  (setq arxiv-order-info
+	(completing-read "Sort results by: "
+			 '("Announcement date (newest first)"
+			   "Announcement date (oldest first)"
+			   "Submission date (newest first)"
+			   "Submission date (oldest first)"
+			   "Relevance")
+			 nil t))
+    (cond
+     ((equal arxiv-order-info "Relevance")
+      (setq arxiv-query-sorting '(:sortby relevance :sortorder descending)))
+     ((equal arxiv-order-info "Announcement date (newest first)")
+      (setq arxiv-query-sorting '(:sortby lastUpdatedDate :sortorder descending)))
+     ((equal arxiv-order-info "Announcement date (oldest first)")
+      (setq arxiv-query-sorting '(:sortby lastUpdatedDate :sortorder ascending)))
+     ((equal arxiv-order-info "Submission date (newest first)")
+      (setq arxiv-query-sorting '(:sortby submittedDate :sortorder descending)))
+     ((equal arxiv-order-info "Submission date (oldest first)")
+      (setq arxiv-query-sorting '(:sortby submittedDate :sortorder ascending))))
+    (arxiv-search-menu/body))
+
 (defun arxiv-hydra-perform-search ()
   "Helper function for `arxiv-search-menu'."
   (interactive)
   (if arxiv-query-data-list
       (progn
 	(setq arxiv-query-info (replace-regexp-in-string "^+" "" arxiv-query-info))
-	(setq arxiv-query-data-list (nreverse arxiv-query-data-list)) ; fix the reverse order caused in qrxiv-query-data-update ()
+	(setq arxiv-query-data-list (nreverse arxiv-query-data-list)) ; fix the reverse order caused in arxiv-query-data-update ()
 	(setq arxiv-entry-list (arxiv-query-general))
 	(setq arxiv-mode-entry-function 'arxiv-complex-search)
 	(arxiv-populate-page))
@@ -742,12 +769,13 @@ Do exclusive update if CONDITION is nil. Also updates `arxiv-query-info'."
 (defhydra arxiv-search-menu (:color blue :foreign-keys warn :exit t)
   "
 Condition: %`arxiv-query-info
+Sort by: %s(format arxiv-order-info)
 Add search condition:
 -------------------------------------------------------------------------------
 _a_: all                   _i_: article ID            _t_: submitted time
 _u_: author(s)             _b_: abstract              _c_: category
-_j_: journal               _m_: comment               _-_: exclude condition
-_x_: perform search with current condition(s)       _q_: quit
+_j_: journal               _m_: comment               _s_: sorting
+_-_: exclude condition     _x_: perform search with current condition(s)
 "
   ("a" (arxiv-query-data-update 'all t))
   ("i" (arxiv-query-data-update 'id t))
@@ -757,6 +785,7 @@ _x_: perform search with current condition(s)       _q_: quit
   ("c" (arxiv-query-data-update 'category t))
   ("j" (arxiv-query-data-update 'journal t))
   ("m" (arxiv-query-data-update 'comment t))
+  ("s" (arxiv-query-order-update))
   ("-" arxiv-search-menu-ex/body)
   ("x" arxiv-hydra-perform-search)
   ("q" (setq arxiv-query-data-list nil) "quit"))
@@ -764,12 +793,13 @@ _x_: perform search with current condition(s)       _q_: quit
 (defhydra arxiv-search-menu-ex (:color red :foreign-keys warn :exit t)
   "
 Condition: %`arxiv-query-info
+Sort by: %s(format arxiv-order-info)
 Exclude arXiv search condition:
 -------------------------------------------------------------------------------
 _a_: all                   _i_: article ID            _t_: submitted time
 _u_: author(s)             _b_: abstract              _c_: category
-_j_: journal               _m_: comment               _+_: include condition
-_x_: perform search with current condition(s)       _q_: quit
+_j_: journal               _m_: comment               _s_: sorting
+_+_: include condition     _x_: perform search with current condition(s)     
 "
   ("a" (arxiv-query-data-update 'all nil))
   ("i" (arxiv-query-data-update 'id nil))
@@ -779,6 +809,7 @@ _x_: perform search with current condition(s)       _q_: quit
   ("c" (arxiv-query-data-update 'category nil))
   ("j" (arxiv-query-data-update 'journal nil))
   ("m" (arxiv-query-data-update 'comment nil))
+  ("s" (arxiv-query-order-update))
   ("+" arxiv-search-menu/body)
   ("x" arxiv-hydra-perform-search)
   ("q" (setq arxiv-query-data-list nil) "quit"))

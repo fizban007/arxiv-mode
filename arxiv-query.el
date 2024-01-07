@@ -71,6 +71,10 @@ When using this function, make sure that the first item of the list has t condit
 	 ((eq field 'journal) (setq url (concat url "jr:")))
 	 ((eq field 'category) (setq url (concat url "cat:"))))
 	(setq url (concat url (arxiv-parse-query-data (nth 2 query-data))))))
+    (if arxiv-query-sorting
+	(setq url (concat url (format "&sortBy=%s&sortOrder=%s"
+				      (plist-get arxiv-query-sorting :sortby)
+				      (plist-get arxiv-query-sorting :sortorder)))))
     (setq url (concat url (format "&start=%d&max_results=%d" start arxiv-entries-per-fetch)))))
 
 (defun arxiv-geturl-date (date-start date-end category &optional start ascending)

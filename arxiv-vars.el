@@ -74,6 +74,14 @@ Available fields are 'all, 'id, 'time, 'title, 'author, 'abstract,
 If condition is nil then the the search excludes the context and vice versa.
 context is a string seperated by quotes and spaces.")
 
+(defvar arxiv-query-sorting nil
+  "A plist indicating how to sort arxiv query results.
+:sortby is one of `relevance', `lastUpdatedDate' or `submittedDate';
+:sortorder either `ascending' or `descending'.")
+
+(defvar arxiv-order-info "Default"
+  "The string giving the current sorting for arxiv query.")
+
 (defvar arxiv-query-info ""
   "A string containing the information of query data displayed in the header line.")
 
