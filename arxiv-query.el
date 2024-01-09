@@ -89,20 +89,6 @@ If ASCENDING is t then sort the list by ascending order instead of descending."
   (format "%s?search_query=submittedDate:[%s+TO+%s]+AND+cat:%s*&sortBy=submittedDate&sortOrder=%s&start=%d&max_results=%d"
               arxiv-url date-start date-end category ascending start arxiv-entries-per-fetch))
 
-(defun arxiv-geturl-author (author &optional category start)
-  "Get the API url for articles used by `arxiv-read-author'.
-AUTHOR and CATEGORY specifies search fields.
-START specifies starting index (default 0)."
-  (unless start
-    (setq start 0))  ; Start with the first result
-  (setq author (replace-regexp-in-string " " "+" author))
-  (setq author (replace-regexp-in-string "\"" "%22" author))
-  (if category
-      (format "%s?search_query=au:%s+AND+cat:%s*&start=%d&max_results=%d"
-	      arxiv-url author category start arxiv-entries-per-fetch)
-    (format "%s?search_query=au:%s&start=%d&max_results=%d"
-	      arxiv-url author start arxiv-entries-per-fetch)))
-
 (defun arxiv-getxml-context (node child-name)
   "XML helper to get the context of CHILD-NAME from NODE directly."
   (car (xml-node-children (car (xml-get-children node child-name)))))

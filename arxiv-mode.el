@@ -277,9 +277,9 @@ move the current entry to the corresponding position. Otherwise call
 	 (info-width (- (window-total-width) (length entry) 2)))
     (list
      (list (- info-width)
-	   (if (or (eq arxiv-mode-entry-function 'arxiv-complex-search) (eq arxiv-mode-entry-function 'arxiv-search))
-	       (concat " Search results for " arxiv-query-info ". Sorting: " arxiv-order-info)
-	     arxiv-query-info)
+	   (if (or (eq arxiv-mode-entry-function 'arxiv-read-new) (eq arxiv-mode-entry-function 'arxiv-read-recent))
+	       arxiv-query-info
+	     (concat " Search results for " arxiv-query-info ".  Sorted by: " arxiv-order-info))
      (propertize " " 'display `(space :align-to ,info-width))
      entry))))
 
@@ -366,13 +366,7 @@ If MIN-ENTRY and MAX-ENTRY are ignored, defaults to fill with the whole `arxiv-e
 				 (alist-get 'date-start arxiv-query-data-list)
 				 (alist-get 'date-end arxiv-query-data-list)
 				 min nil))))
-     ((eq arxiv-mode-entry-function 'arxiv-read-author)
-      (setq arxiv-entry-list
-	    (append arxiv-entry-list
-		    (arxiv-query-author (alist-get 'author arxiv-query-data-list)
-					(alist-get 'category arxiv-query-data-list)
-					min))))
-     ((or (eq arxiv-mode-entry-function 'arxiv-complex-search) (eq arxiv-mode-entry-function 'arxiv-search))
+     (t
       (setq arxiv-entry-list (append arxiv-entry-list (arxiv-query-general min)))))
     (set-buffer arxiv-buffer)
     (goto-char (point-max))
@@ -636,13 +630,16 @@ Read from previous day instead? ")
 If AUTHOR is non-nil, find papers by author in all categories."
   (interactive)
   (let ((category nil))
-    (unless author
-      (setq author (read-string "Authors name (use space to separate): "))
-      (setq category (completing-read "Select category: " arxiv-categories nil t nil nil arxiv-default-category)))
-    (setq arxiv-entry-list (arxiv-query-author author category))
-    (setq category (or category "all"))
-    (setq arxiv-query-info (format " Showing results for author(s): %s in categroy %s." author category))
-    (setq arxiv-query-data-list `((author . ,author) (category . ,category)))
+    (if author
+	(setq arxiv-query-data-list `((author t ,author))
+	      arxiv-query-info (format "au:%s" author))
+      (setq author (read-string "Authors name (use space to separate): ")
+	    category (completing-read "Select category: " arxiv-categories nil t nil nil arxiv-default-category))
+      (setq arxiv-query-data-list `((author t ,author) (category t ,category))
+	    arxiv-query-info (format "author:%s+category:%s" author category)))
+    (setq arxiv-order-info "Submission date (newest first)"
+	  arxiv-query-sorting '(:sortby submittedDate :sortorder descending))
+    (setq arxiv-entry-list (arxiv-query-general))
     (setq arxiv-mode-entry-function 'arxiv-read-author)
     (arxiv-populate-page)))
 
