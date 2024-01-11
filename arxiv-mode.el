@@ -288,29 +288,26 @@ move the current entry to the corresponding position. Otherwise call
 If MIN-ENTRY and MAX-ENTRY are ignored, defaults to fill with the whole `arxiv-entry-list'."
   (unless min-entry
     (setq min-entry 0))
-  (let ((arxiv-entry-list-trun (seq-subseq arxiv-entry-list min-entry max-entry))) ; if max is omitted it defaults to be len(list)
-    (mapcar
-     (lambda (entry)
-       (progn
-	 (arxiv-insert-with-face (format  " %s\n " (alist-get 'title entry)) 'arxiv-title-face)
-	 (let ((author-list (copy-sequence (alist-get 'author entry))) (overlength nil))
-	   (when (> (length author-list) arxiv-author-list-maximum)
-	     (setcdr (nthcdr (1- arxiv-author-list-maximum) author-list) nil)
-	     (setq overlength t))
-	   (dolist (author author-list)
-	     (arxiv-insert-with-face (format "%s" author) 'arxiv-author-face)
-	     (insert ", "))
-	   (if overlength
-	       (insert "et al.")
-	     (delete-char -2)))
-	 (let ((date (alist-get 'date entry)))
-	   (string-match "^[-[:digit:]]+ " date)
-	   (arxiv-insert-with-face (format "\n %s " (match-string 0 date)) 'arxiv-date-face))
-	 (let ((cats (alist-get 'categories entry)))
-	   (dolist (cat cats)
-	     (arxiv-insert-with-face (format "[%s] " cat) 'arxiv-keyword-face)))
-	 (insert "\n\n")))
-     arxiv-entry-list-trun)))
+  (let ((arxiv-entry-list-trun (seq-subseq arxiv-entry-list min-entry max-entry)))
+    (seq-doseq (entry arxiv-entry-list-trun)
+      (arxiv-insert-with-face (format  " %s\n " (alist-get 'title entry)) 'arxiv-title-face)
+      (let ((author-list (copy-sequence (alist-get 'author entry))) (overlength nil))
+	(when (> (length author-list) arxiv-author-list-maximum)
+	  (setcdr (nthcdr (1- arxiv-author-list-maximum) author-list) nil)
+	  (setq overlength t))
+	(dolist (author author-list)
+	  (arxiv-insert-with-face (format "%s" author) 'arxiv-author-face)
+	  (insert ", "))
+	(if overlength
+	    (insert "et al.")
+	  (delete-char -2)))
+      (let ((date (alist-get 'date entry)))
+	(string-match "^[-[:digit:]]+ " date)
+	(arxiv-insert-with-face (format "\n %s " (match-string 0 date)) 'arxiv-date-face))
+      (let ((cats (alist-get 'categories entry)))
+	(dolist (cat cats)
+	  (arxiv-insert-with-face (format "[%s] " cat) 'arxiv-keyword-face)))
+      (insert "\n\n"))))
 
 (defun arxiv-populate-page ()
   "Populate the page of results according to `arxiv-entry-list' into buffer."
@@ -320,7 +317,7 @@ If MIN-ENTRY and MAX-ENTRY are ignored, defaults to fill with the whole `arxiv-e
 	  (unless (frame-live-p arxiv-frame)
 	    (setq arxiv-frame
 		  (make-frame arxiv-frame-alist)))
-	  (select-frame  arxiv-frame))
+	  (select-frame-set-input-focus  arxiv-frame))
 	(unless (buffer-live-p arxiv-buffer)
 	  (setq arxiv-buffer (get-buffer-create "*arXiv-update*")))
 	(with-current-buffer arxiv-buffer
@@ -601,6 +598,7 @@ With optional arg RES-TIME, read new submission with respective to it."
     (setq arxiv-entry-list (arxiv-query category date-start date-end nil t))
     (setq arxiv-query-data-list `((date-start . ,date-start) (date-end . ,date-end) (category . ,category)))
     (setq arxiv-mode-entry-function 'arxiv-read-new)
+    (arxiv-query-sort-cat category)
     (if arxiv-entry-list
 	(arxiv-populate-page)
       (when (y-or-n-p "Could not find any new submissions (this often happens because there is often a slight delay between arXiv's said and actual announcement time).

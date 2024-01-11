@@ -156,10 +156,12 @@ If ASCENDING is t then sort the list by ascending order instead of descending."
     (user-error "Incorrect date specification"))
   (arxiv-parse-api (arxiv-geturl-date date-start date-end cat start ascending)))
 
-(defun arxiv-query-author (author &optional cat start)
-  "Query arXiv for articles by authors AUTHOR (in category CAT).
-START specifies starting index (default 0)."
-  (arxiv-parse-api (arxiv-geturl-author author cat start)))
+(defun arxiv-query-sort-cat (cat)
+  "Sort the entry list according to the category CAT and cross-list."
+  (when arxiv-entry-list
+    (let ((main (seq-filter (lambda (x) (equal (car (alist-get 'categories x)) cat)) arxiv-entry-list))
+	  (crosslist (seq-remove (lambda (x) (equal (car (alist-get 'categories x)) cat)) arxiv-entry-list)))
+      (setq arxiv-entry-list (append main crosslist)))))
 
 (defun arxiv-query-general (&optional start)
   "Do a general query according to the list `arxiv-query-data-list'.
